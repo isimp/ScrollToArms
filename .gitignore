@@ -1,0 +1,10 @@
+# Build output
+bin/
+obj/
+
+# Release scratch
+dist/
+*.zip
+
+# lib/ is deliberately NOT ignored: it holds the metadata-only reference stubs CI builds
+# against, written by tools/strip-references.ps1. No runnable game code lives there.

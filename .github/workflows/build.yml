@@ -1,0 +1,29 @@
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      # lib/ holds metadata-only copies of everything the project references, so a build server
+      # needs no Valheim install and no download step. See tools/strip-references.ps1.
+      - name: Build
+        run: dotnet build -c Release -p:LibsDir=lib --nologo
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScrollToArms
+          path: bin/Release/ScrollToArms.dll
+          if-no-files-found: error

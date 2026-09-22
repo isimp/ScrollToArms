@@ -1,0 +1,191 @@
+name: Release
+
+# Manual only. Publishes to GitHub, then to Hexium, Thunderstore or both.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. 0.1.0 (must already match the source)"
+        required: true
+      notes:
+        description: "One line for the top of the release notes (optional)"
+        required: false
+      draft:
+        description: "Create the release as a draft"
+        type: boolean
+        default: false
+      stores:
+        description: "Where to publish after the GitHub release"
+        type: choice
+        options:
+          - Hexium and Thunderstore
+          - Hexium only
+          - Thunderstore only
+        default: Hexium and Thunderstore
+      team:
+        description: "Team to publish under on both stores (the package namespace)"
+        required: true
+        default: "isimp"
+      hexium_categories:
+        description: "Hexium categories, comma separated"
+        required: false
+        default: "Quality of Life,Combat,Open Source,Valheim 1.0"
+      thunderstore_categories:
+        description: "Thunderstore category slugs, comma separated (keep ai-generated)"
+        required: false
+        default: "ai-generated,mods,tweaks,client-side,deep-north-update"
+
+env:
+  # Thunderstore packages list BepInEx so mod managers install it; Hexium assumes it and
+  # must not have it listed. Added to the Thunderstore package's manifest only.
+  THUNDERSTORE_BEPINEX: "denikson-BepInExPack_Valheim-5.4.2350"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The version lives in three places that have to agree with each other and with what you
+      # typed. Checked before anything is built, so a mismatch costs seconds rather than
+      # producing a release whose DLL or package reports a different version than its tag.
+      # Inputs are passed through the environment rather than pasted into the script, so what
+      # someone types in the dispatch form is data and never shell.
+      - name: Check the version matches the source
+        env:
+          WANT: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          want="$WANT"
+
+          csproj=$(grep -oPm1 '(?<=<Version>)[^<]+' ScrollToArms.csproj)
+          plugin=$(grep -oPm1 'public const string Version = "\K[^"]+' src/Plugin.cs)
+          manifest=$(grep -oPm1 '"version_number"\s*:\s*"\K[^"]+' packaging/manifest.json)
+
+          echo "asked for    : $want"
+          echo "csproj       : $csproj"
+          echo "Plugin.cs    : $plugin"
+          echo "manifest.json: $manifest"
+
+          if [ "$csproj" != "$want" ] || [ "$plugin" != "$want" ] || [ "$manifest" != "$want" ]; then
+            echo "::error::Version mismatch. Set $want in ScrollToArms.csproj (<Version>), src/Plugin.cs (Version) and packaging/manifest.json (version_number), then run this again."
+            exit 1
+          fi
+
+      # The icon is committed by hand. Checked up front so a missing one reads as a missing
+      # icon rather than as a copy error halfway through packaging.
+      - name: Check the icon is there
+        run: |
+          if [ ! -f packaging/icon.png ]; then
+            echo "::error::packaging/icon.png is missing. Drop a 256x256 PNG there and commit it."
+            exit 1
+          fi
+          echo "icon present"
+
+      # Publishing is part of releasing here, so a missing token is a failure now rather than
+      # after the GitHub release already exists.
+      - name: Check the Hexium token is set
+        if: contains(inputs.stores, 'Hexium')
+        env:
+          HEXIUM_TOKEN: ${{ secrets.HEXIUM_TOKEN }}
+        run: |
+          if [ -z "${HEXIUM_TOKEN:-}" ]; then
+            echo "::error::HEXIUM_TOKEN is not set. Create an API token in your Hexium team settings and add it as a repository secret."
+            exit 1
+          fi
+          echo "token present"
+
+      - name: Check the Thunderstore token is set
+        if: contains(inputs.stores, 'Thunderstore')
+        env:
+          THUNDERSTORE_TOKEN: ${{ secrets.THUNDERSTORE_TOKEN }}
+        run: |
+          if [ -z "${THUNDERSTORE_TOKEN:-}" ]; then
+            echo "::error::THUNDERSTORE_TOKEN is not set. Create a service account token in your Thunderstore team settings and add it as a repository secret."
+            exit 1
+          fi
+          echo "token present"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build
+        run: dotnet build -c Release -p:LibsDir=lib --nologo
+
+      # Mod sites want every required file at the root of the archive, not inside a folder.
+      - name: Package
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          name="ScrollToArms-$VERSION"
+
+          mkdir -p dist/package
+          cp bin/Release/ScrollToArms.dll dist/package/
+          cp packaging/manifest.json packaging/icon.png dist/package/
+          cp README.md CHANGELOG.md LICENSE dist/package/
+
+          mkdir -p dist/hexium dist/thunderstore
+          (cd dist/package && zip -qr "../hexium/$name.zip" .)
+
+          jq --arg dep "$THUNDERSTORE_BEPINEX" '.dependencies = [$dep] + .dependencies' \
+            packaging/manifest.json > dist/package/manifest.json
+          (cd dist/package && zip -qr "../thunderstore/$name.zip" .)
+          cp bin/Release/ScrollToArms.dll dist/
+
+          echo "--- package contents ---"
+          unzip -l "dist/hexium/$name.zip"
+
+      # Everything the site requires of the archive (files at the root, a 256x256 icon, the
+      # name and description rules) is checked before anything is published.
+      - name: Check the packages
+        env:
+          NAME: ScrollToArms-${{ inputs.version }}.zip
+        run: |
+          python3 tools/publish.py "dist/hexium/$NAME" --check-only
+          python3 tools/publish.py "dist/thunderstore/$NAME" --check-only
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: ScrollToArms ${{ inputs.version }}
+          draft: ${{ inputs.draft }}
+          generate_release_notes: true
+          body: |
+            ${{ inputs.notes }}
+
+            Install: drop `ScrollToArms.dll` into `BepInEx/plugins`, or install the zip with a mod manager.
+
+            Requires BepInEx 5. Client-side only; servers do not need it.
+
+            Hold Left Alt and scroll to pick a weapon or tool from the hotbar. The key, and which of zoom and hotbar gets the plain wheel, can be changed in the config.
+          files: |
+            dist/hexium/ScrollToArms-${{ inputs.version }}.zip
+            dist/ScrollToArms.dll
+
+      # If a publish step fails, fix the cause and run the workflow again with only the store
+      # that failed: the release step above updates the existing release rather than making a
+      # second one, and each store refuses a version it already has.
+      - name: Publish to Hexium
+        if: contains(inputs.stores, 'Hexium')
+        env:
+          HEXIUM_TOKEN: ${{ secrets.HEXIUM_TOKEN }}
+          PACKAGE: dist/hexium/ScrollToArms-${{ inputs.version }}.zip
+          TEAM: ${{ inputs.team }}
+          CATEGORIES: ${{ inputs.hexium_categories }}
+        run: python3 tools/publish.py "$PACKAGE" --store hexium --team "$TEAM" --categories "$CATEGORIES"
+
+      - name: Publish to Thunderstore
+        if: contains(inputs.stores, 'Thunderstore')
+        env:
+          THUNDERSTORE_TOKEN: ${{ secrets.THUNDERSTORE_TOKEN }}
+          PACKAGE: dist/thunderstore/ScrollToArms-${{ inputs.version }}.zip
+          TEAM: ${{ inputs.team }}
+          CATEGORIES: ${{ inputs.thunderstore_categories }}
+        run: python3 tools/publish.py "$PACKAGE" --store thunderstore --team "$TEAM" --categories "$CATEGORIES"
