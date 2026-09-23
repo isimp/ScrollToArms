@@ -24,17 +24,38 @@ namespace ScrollToArms
         /// <summary>The hotbar slot the wheel points at, 0 to 7.</summary>
         public static int Cursor { get; private set; } = -1;
 
-        /// <summary>An item picked while the game refused a change, waiting to be equipped.</summary>
+        /// <summary>A committed pick that is not in hand yet.</summary>
         public static ItemDrop.ItemData Pending { get; private set; }
 
         /// <summary>The hotbar slot of <see cref="Pending"/>.</summary>
         public static int PendingSlot { get; private set; } = -1;
 
+        /// <summary>
+        /// True while a pick is held back because the game would refuse or lose it, as opposed to
+        /// being in the game's own equip bar.
+        /// </summary>
+        public static bool Waiting => Pending != null && _lastBusy != null;
+
+        /// <summary>When the current wait began, so a pulse can start with it.</summary>
+        public static float WaitingSince { get; private set; }
+
+        /// <summary>
+        /// The hotbar slot of the last pick that was lost, because its wait ran out or the game
+        /// would not take it, and when. Picks the player cancelled another way are not counted.
+        /// </summary>
+        public static int LostSlot { get; private set; } = -1;
+
+        public static float LostAt { get; private set; }
+
         private static float _pendingUntil;
+        private static bool _asked;
+        private static bool _queueSeen;
+        private static string _lastBusy;
         private static float _lastNotch;
         private static float _wheel;
         private static ItemDrop.ItemData _heldRight;
         private static ItemDrop.ItemData _heldLeft;
+        private static bool _warnedNotPatched;
 
         // The same step vanilla uses to rotate a building piece one notch at a time
         // (Player.m_scrollAmountThreshold), so one notch moves the cursor by one slot.
@@ -64,16 +85,23 @@ namespace ScrollToArms
 
         /// <summary>
         /// True when the wheel belongs to the hotbar this frame, which is also when the camera must
-        /// not zoom. Outside the states the hotbar can be used in, the wheel is always the game's.
+        /// not zoom and the piece being placed must not rotate. Outside the states the hotbar can be
+        /// used in, the wheel is always the game's.
         /// </summary>
         public static bool HotbarOwnsWheel()
         {
-            if (!Plugin.Enabled || ToggleEquipped == null) return false;
+            if (!Plugin.Enabled || ToggleEquipped == null || !WheelReads.CameraReady) return false;
 
             var player = Player.m_localPlayer;
             if (player == null || !CanPick(player)) return false;
+            if (StepAside.Holding(player)) return false;
 
             var held = Input.GetKey(Plugin.Modifier);
+
+            // In build mode the plain wheel rotates the piece, whatever PlainScroll says, so the
+            // hotbar is always the modifier's there.
+            if (player.InPlaceMode()) return held && WheelReads.PlacementReady;
+
             return Plugin.PlainScroll == PlainScroll.Zoom ? held : !held;
         }
 
@@ -86,6 +114,12 @@ namespace ScrollToArms
                 return;
             }
 
+            if (!WheelReads.CameraRan && !_warnedNotPatched)
+            {
+                _warnedNotPatched = true;
+                Plugin.Log.LogWarning("ScrollToArms: the camera patch has not been applied yet, so hotbar scrolling waits for it.");
+            }
+
             var now = Time.time;
 
             // Before the CanPick gate: build mode is exactly the state that gate refuses.
@@ -95,6 +129,14 @@ namespace ScrollToArms
             {
                 Reset();
                 return;
+            }
+
+            // A pick that arrived changes the hands itself, so it is settled before that check, and
+            // the hands it produced become the ones a pick still being chosen started from.
+            if (Pending != null && Pending.m_equipped)
+            {
+                ClearPending();
+                RememberHands(player);
             }
 
             // A number key, the inventory or anything else that changes the hands ends the pick:
@@ -148,13 +190,13 @@ namespace ScrollToArms
         {
             if (!Choosing)
             {
-                var start = SlotOfHeld(player);
+                // A pick still on its way counts as already in hand: scrolling continues from it,
+                // and it keeps being followed until the new pick is committed.
+                var start = Pending != null ? PendingSlot : SlotOfHeld(player);
                 if (NextStop(player, start, step) < 0) return;
 
                 Choosing = true;
                 Cursor = start;
-                Pending = null;
-                PendingSlot = -1;
                 RememberHands(player);
             }
 
@@ -171,59 +213,123 @@ namespace ScrollToArms
             if (slot < 0) return;
 
             var item = ItemAt(player, slot);
-            if (item == null || item.m_equipped || player.IsEquipActionQueued(item)) return;
+            if (item == null) return;
+
+            // Landing on the earlier pick keeps it as it is.
+            if (item == Pending) return;
+
+            // The latest pick wins, as a second number key would: an earlier one still waiting or
+            // in the game's equip bar is withdrawn, including when the wheel went back to the item
+            // already in hand.
+            var earlier = Pending;
+            if (earlier != null)
+            {
+                if (player.IsEquipActionQueued(earlier)) player.RemoveEquipAction(earlier);
+                ClearPending();
+            }
+
+            if (item.m_equipped || player.IsEquipActionQueued(item)) return;
 
             Pending = item;
             PendingSlot = slot;
             _pendingUntil = now + Plugin.WaitWhileBusy;
+            _asked = false;
+            _queueSeen = false;
+            _lastBusy = null;
             RememberHands(player);
         }
 
+        /// <summary>
+        /// Follows a pick until it is in hand. The game can take it straight away, queue it behind
+        /// its equip bar, refuse it while busy, or drop a queued equip when the player runs, jumps,
+        /// dodges or attacks. A pick refused or dropped that way is asked for again as soon as the
+        /// game allows, within WaitWhileBusy seconds. The equip bar itself does not count against
+        /// that time.
+        /// </summary>
         private static void TryEquipPending(Player player, float now)
         {
             var item = Pending;
-            if (item.m_equipped || ItemAt(player, PendingSlot) != item)
+            if (ItemAt(player, PendingSlot) != item)
             {
                 ClearPending();
                 return;
             }
 
-            if (Busy(player))
+            if (player.IsEquipActionQueued(item))
             {
-                if (now >= _pendingUntil) ClearPending();
+                _queueSeen = true;
+                _pendingUntil = now + Plugin.WaitWhileBusy;
                 return;
             }
 
-            ClearPending();
+            var busy = BusyReason(player, item);
+            if (busy != null)
+            {
+                if (now >= _pendingUntil)
+                {
+                    Lose(now);
+                    ClearPending();
+                    return;
+                }
+
+                if (_lastBusy == null) WaitingSince = now;
+                _lastBusy = busy;
+                return;
+            }
+
+            _lastBusy = null;
+
+            // Asked before, never queued and still not in hand: the game refused it for a reason
+            // of its own, such as a broken item or a world level, and asking again would repeat
+            // its message every frame.
+            if (_asked && !_queueSeen)
+            {
+                Lose(now);
+                ClearPending();
+                return;
+            }
+
+            if (!_asked) BuildToolHint.Watch(item, now);
+            _asked = true;
+            _queueSeen = false;
 
             // Scrolling back onto what the Hide key put away undoes the stow, both hands, the same
             // as pressing Hide again. Equipping just this item would leave a stowed shield behind.
             if (Stow.IsStowed(player, item)) Stow.Unstow(player);
             else ToggleEquipped(player, item);
 
-            BuildToolHint.Watch(item, now);
+            if (item.m_equipped)
+            {
+                ClearPending();
+            }
+            else if (player.IsEquipActionQueued(item))
+            {
+                _queueSeen = true;
+            }
         }
 
         /// <summary>
-        /// The states in which Humanoid.EquipItem and Player.ToggleEquipped refuse a change
-        /// without saying so.
+        /// Why the game would refuse or lose the pick right now, or null. Attacking, dodging and
+        /// swimming refuse any equip. Running clears the equip queue every frame
+        /// (Player.CheckRun), so an item with an equip time cannot arrive while running, while one
+        /// without still swaps straight away.
         /// </summary>
-        private static bool Busy(Player player)
+        private static string BusyReason(Player player, ItemDrop.ItemData item)
         {
-            if (player.InAttack()) return true;
-            if (player.InDodge()) return true;
-            if (player.IsSwimming() && !player.IsOnGround()) return true;
-            return false;
+            if (player.InAttack()) return "attacking";
+            if (player.InDodge()) return "dodging";
+            if (player.IsSwimming() && !player.IsOnGround()) return "swimming";
+            if (item.m_shared.m_equipDuration > 0f && player.IsRunning() && !Stow.IsStowed(player, item)) return "running";
+            return null;
         }
 
         /// <summary>
-        /// Where the hotbar can be used. The same gate the vanilla hotbar applies to its own
-        /// gamepad cursor, plus the build mode, where the wheel rotates the placement ghost.
+        /// Where the hotbar can be used: the same gate the vanilla hotbar applies to its own
+        /// gamepad cursor. The piece menu is part of it, so build mode counts only while placing.
         /// </summary>
         private static bool CanPick(Player player)
         {
             if (player.IsDead() || player.InCutscene() || player.IsTeleporting()) return false;
-            if (player.InPlaceMode()) return false;
             if (InventoryGui.IsVisible()) return false;
             if (StoreGui.IsVisible()) return false;
             if (Menu.IsVisible()) return false;
@@ -341,10 +447,17 @@ namespace ScrollToArms
         private static bool HandsChanged(Player player) =>
             player.RightItem != _heldRight || player.LeftItem != _heldLeft;
 
+        private static void Lose(float now)
+        {
+            LostSlot = PendingSlot;
+            LostAt = now;
+        }
+
         private static void ClearPending()
         {
             Pending = null;
             PendingSlot = -1;
+            _lastBusy = null;
         }
 
         private static void Reset()

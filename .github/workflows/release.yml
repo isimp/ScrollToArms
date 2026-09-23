@@ -29,11 +29,11 @@ on:
       hexium_categories:
         description: "Hexium categories, comma separated"
         required: false
-        default: "Quality of Life,Combat,Open Source,Valheim 1.0"
+        default: "Quality of Life,Combat,User Interface,Open Source,Valheim 1.0"
       thunderstore_categories:
         description: "Thunderstore category slugs, comma separated (keep ai-generated)"
         required: false
-        default: "ai-generated,mods,tweaks,client-side,deep-north-update"
+        default: "ai-generated,mods,tweaks,utility,client-side,deep-north-update"
 
 env:
   # Thunderstore packages list BepInEx so mod managers install it; Hexium assumes it and

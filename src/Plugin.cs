@@ -21,9 +21,9 @@ namespace ScrollToArms
     }
 
     /// <summary>
-    /// Scroll the hotbar with the mouse wheel. One Harmony patch takes the wheel away from the
-    /// camera zoom while the hotbar owns it; the rest is the picker, driven from Update, and the
-    /// selection frame, drawn in LateUpdate.
+    /// Scroll the hotbar with the mouse wheel. A Harmony transpiler takes the wheel away from the
+    /// camera zoom and the piece rotation while the hotbar owns it; the rest is the picker, driven
+    /// from Update, and the selection frame, drawn in LateUpdate.
     /// </summary>
     [BepInPlugin(Guid, "ScrollToArms", Version)]
     [BepInProcess("valheim.exe")]
@@ -46,17 +46,21 @@ namespace ScrollToArms
         private static ConfigEntry<bool> _wrap;
         private static ConfigEntry<bool> _invert;
         private static ConfigEntry<bool> _skipBuildTools;
+        private static ConfigEntry<string> _stepAsideTools;
         private static ConfigEntry<float> _waitWhileBusy;
 
         public static bool Enabled => !_broken && (_enabled == null || _enabled.Value);
         public static KeyCode Modifier => _modifier?.Value ?? KeyCode.LeftAlt;
         public static PlainScroll PlainScroll => _plainScroll?.Value ?? PlainScroll.Zoom;
         public static Commit CommitSetting => _commit?.Value ?? Commit.OnRelease;
-        public static float PauseTime => _pauseTime?.Value ?? 0.25f;
+        public static float PauseTime => _pauseTime?.Value ?? 0.4f;
         public static bool Wrap => _wrap == null || _wrap.Value;
         public static bool Invert => _invert != null && _invert.Value;
-        public static bool SkipBuildTools => _skipBuildTools == null || _skipBuildTools.Value;
-        public static float WaitWhileBusy => _waitWhileBusy?.Value ?? 1f;
+        public static bool SkipBuildTools => _skipBuildTools != null && _skipBuildTools.Value;
+        public static string StepAsideTools => _stepAsideTools?.Value ?? DefaultStepAsideTools;
+        public static float WaitWhileBusy => _waitWhileBusy?.Value ?? 2f;
+
+        private const string DefaultStepAsideTools = "BlueprintRune, PlanHammer";
 
         /// <summary>
         /// The commit that applies right now. Releasing the modifier can only end a pick that was
@@ -78,15 +82,15 @@ namespace ScrollToArms
             // refuses to fire while any other keyboard key is held, and this one is held while
             // moving with WASD.
             _modifier = Config.Bind("General", "Modifier", KeyCode.LeftAlt,
-                "Hold this while scrolling to use the other half of the wheel: the hotbar when PlainScroll is Zoom, the camera zoom when PlainScroll is Hotbar.");
+                "Hold this while scrolling to use the other half of the wheel: the hotbar when PlainScroll is Zoom, the camera zoom when PlainScroll is Hotbar. In build mode the plain wheel rotates the piece being placed, so there this always picks from the hotbar.");
 
             _plainScroll = Config.Bind("General", "PlainScroll", PlainScroll.Zoom,
-                "What the mouse wheel does without the modifier. Zoom keeps the game's camera zoom on the wheel and scrolls the hotbar with the modifier held. Hotbar swaps the two.");
+                "What the mouse wheel does without the modifier. Zoom keeps the game's camera zoom on the wheel and scrolls the hotbar with the modifier held. Hotbar swaps the two. With a build tool out, the plain wheel rotates the piece either way and the modifier with the wheel picks from the hotbar; with Hotbar a message says so when the wheel takes a build tool out.");
 
             _commit = Config.Bind("Selection", "Commit", Commit.OnRelease,
                 "When the picked slot is equipped. OnRelease equips it when you let go of the modifier. AfterPause equips it once the wheel has been still for PauseTime. When PlainScroll is Hotbar there is no modifier to release, so AfterPause is always used.");
 
-            _pauseTime = Config.Bind("Selection", "PauseTime", 0.25f,
+            _pauseTime = Config.Bind("Selection", "PauseTime", 0.4f,
                 new ConfigDescription(
                     "Seconds the wheel has to be still before the picked slot is equipped, when AfterPause applies.",
                     new AcceptableValueRange<float>(0.05f, 1.5f)));
@@ -97,18 +101,19 @@ namespace ScrollToArms
             _invert = Config.Bind("Selection", "InvertDirection", false,
                 "By default scrolling down moves right along the hotbar and scrolling up moves left. Turn this on to swap them.");
 
-            // A build tool puts the player in build mode, where the wheel rotates the piece being
-            // placed and hotbar scrolling is off, so the wheel cannot move on from it.
-            _skipBuildTools = Config.Bind("Selection", "SkipBuildTools", true,
-                "Pass over the hammer, hoe, cultivator and other tools that open build mode. In build mode the wheel rotates the piece being placed, so once one of them is in hand the wheel cannot switch away from it.");
+            _skipBuildTools = Config.Bind("Selection", "SkipBuildTools", false,
+                "Pass over the hammer, hoe, cultivator and other tools that open build mode. With them in hand the plain wheel rotates the piece being placed, and the modifier with the wheel still picks from the hotbar.");
 
-            _waitWhileBusy = Config.Bind("Rules", "WaitWhileBusy", 1f,
+            _stepAsideTools = Config.Bind("Selection", "StepAsideTools", DefaultStepAsideTools,
+                "Tools whose own controls use the modifier with the wheel. While one of them is in hand, the modifier and the wheel are left to the tool, and the Hide key or a number key switches away. Item prefab names, separated by commas. The defaults are the Blueprint Rune and Plan Hammer from PlanBuild.");
+
+            _waitWhileBusy = Config.Bind("Rules", "WaitWhileBusy", 2f,
                 new ConfigDescription(
-                    "The game refuses to change what you hold while you attack, dodge or swim. A pick made then is kept for this many seconds and equipped as soon as the game allows it. 0 drops it instead, the way the number keys do.",
+                    "The game refuses to change what you hold while you attack, dodge or swim, and cancels an item's equip time while you run, jump or attack. A pick refused or cancelled that way is kept for this many seconds, with its slot pulsing on the hotbar, and equipped as soon as the game allows it. If the time runs out first, the slot flashes red and the pick is dropped. The game's own equip bar does not count against this time. 0 drops the pick instead, the way the number keys do.",
                     new AcceptableValueRange<float>(0f, 3f)));
 
             _harmony = new Harmony(Guid);
-            _broken = !CameraWheel.Apply(_harmony);
+            _broken = !WheelReads.Apply(_harmony);
             if (_broken)
             {
                 Log.LogError("ScrollToArms: hotbar scrolling is off for this session. The camera zoom is untouched.");

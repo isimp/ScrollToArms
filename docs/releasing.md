@@ -58,8 +58,8 @@ For authorization the script tries `Bearer` first and falls back to `Token`, pri
 It can also be run by hand:
 
 ```bash
-HEXIUM_TOKEN=... python3 tools/publish.py dist/hexium/ScrollToArms-0.1.0.zip --store hexium --team isimp --categories "Quality of Life,Combat,Open Source,Valheim 1.0"
-THUNDERSTORE_TOKEN=... python3 tools/publish.py dist/thunderstore/ScrollToArms-0.1.0.zip --store thunderstore --team isimp --categories "ai-generated,mods,tweaks,client-side,deep-north-update"
+HEXIUM_TOKEN=... python3 tools/publish.py dist/hexium/ScrollToArms-0.1.0.zip --store hexium --team isimp --categories "Quality of Life,Combat,User Interface,Open Source,Valheim 1.0"
+THUNDERSTORE_TOKEN=... python3 tools/publish.py dist/thunderstore/ScrollToArms-0.1.0.zip --store thunderstore --team isimp --categories "ai-generated,mods,tweaks,utility,client-side,deep-north-update"
 python3 tools/publish.py dist/hexium/ScrollToArms-0.1.0.zip --check-only   # validate only
 ```
 
