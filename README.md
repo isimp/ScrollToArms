@@ -1,10 +1,14 @@
 # ScrollToArms
 
-Hold Left Alt and turn the mouse wheel to pick a weapon or tool from your hotbar. A frame moves along the bar as you scroll, and whatever it rests on goes into your hand when you let go of Alt. Plain scrolling still zooms the camera. The settings can swap the two, so that the wheel picks straight away and Alt with the wheel zooms.
+Pick the weapon or tool in your hand with the mouse wheel. Hold Left Alt and scroll, and a frame moves along your hotbar. Let go of Alt and whatever it rests on goes into your hand.
 
-The game keeps its rules. The wheel passes over food, armour, materials and broken items. A pick the game refuses right now, because you attack, dodge or swim, or because you run while the item needs time to equip, waits with its slot pulsing and goes into your hand as soon as the game allows it. With the hammer, hoe or cultivator out, the plain wheel still rotates the piece you are placing, and Alt with the wheel still switches away. After you put your weapons away with the Hide key, the wheel carries on from the stowed weapon, and scrolling back onto it brings both hands back, the same as pressing Hide again.
+![The selection frame on the hotbar](https://raw.githubusercontent.com/isimp/ScrollToArms/main/docs/images/screenshot.webp)
 
-ScrollToArms only runs on your own machine. Nothing it changes is sent to other players, and servers do not need it.
+You decide how the wheel is shared. By default plain scrolling still zooms the camera and Alt with the wheel picks from the hotbar. Swap them, and the wheel picks straight away while Alt with the wheel zooms. A pick goes into your hand when you let go of Alt, or once the wheel has been still for a moment, whichever you prefer. The key, that pause, the scroll direction and wrapping at the ends of the bar can all be changed too.
+
+The game keeps its rules. The wheel passes over food, armour and materials. When the game refuses a pick because you attack, dodge, swim or run, its slot pulses until the item can go into your hand, and flashes red if it never gets there. While building, the plain wheel still rotates the piece and Alt with the wheel still switches away.
+
+ScrollToArms only runs on your own machine, and servers do not need it.
 
 ## AI notice
 
@@ -12,7 +16,7 @@ Most of ScrollToArms was written by Claude Code (Anthropic), which did the heavy
 
 ## Settings
 
-All settings are in BepInEx/config/isimp.ScrollToArms.cfg, each with a description. They include the modifier key, whether plain scrolling zooms or picks, whether a pick is equipped when you let go or after a short pause, wrapping and direction, skipping build tools, tools that keep Alt with the wheel for themselves (PlanBuild's by default), and how long a pick waits while you are busy.
+All settings are in BepInEx/config/isimp.ScrollToArms.cfg, each with a description. Besides the modes above, they cover skipping build tools, tools that keep the wheel for themselves (PlanBuild's by default) and how long a pick may wait.
 
 ## More
 
