@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+Landing on the item you already hold unequips it, as its number key would. A tap on Alt brings it back.
+
 ## 0.2.1
 
 The frame ticks as it moves, and a lost pick makes a sound. Both follow the game's sound effects volume and only you hear them.

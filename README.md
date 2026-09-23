@@ -1,6 +1,6 @@
 # ScrollToArms
 
-Pick the weapon or tool in your hand with the mouse wheel. Hold Left Alt and scroll, and a frame ticks along your hotbar with the item's name above it. Let go of Alt and whatever it rests on goes into your hand. A quick tap on Alt goes back to what you held before, and whenever the wheel does something else, such as rotating a building piece, the same spot above the hotbar says so.
+Pick the weapon or tool in your hand with the mouse wheel. Hold Left Alt and scroll, and a frame ticks along your hotbar with the item's name above it. Let go of Alt and whatever it rests on goes into your hand, or out of it if you were already holding it. A quick tap on Alt goes back to what you held before, and whenever the wheel does something else, such as rotating a building piece, the same spot above the hotbar says so.
 
 ![The selection frame and the item name on the hotbar](https://raw.githubusercontent.com/isimp/ScrollToArms/main/docs/images/screenshot.webp)
 

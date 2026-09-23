@@ -30,7 +30,7 @@ namespace ScrollToArms
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "isimp.ScrollToArms";
-        public const string Version = "0.2.1";
+        public const string Version = "0.2.2";
 
         public static ManualLogSource Log;
 

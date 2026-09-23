@@ -24,7 +24,10 @@ namespace ScrollToArms
         /// <summary>The hotbar slot the wheel points at, 0 to 7, or -1 while not choosing.</summary>
         public static int Cursor { get; private set; } = -1;
 
-        /// <summary>A committed pick that is not in hand yet.</summary>
+        /// <summary>
+        /// A committed pick the game has not carried out yet: an item on its way into the hand, or
+        /// out of it when the pick landed on the slot already held.
+        /// </summary>
         public static ItemDrop.ItemData Pending { get; private set; }
 
         /// <summary>The hotbar slot of <see cref="Pending"/>.</summary>
@@ -48,6 +51,7 @@ namespace ScrollToArms
         public static float LostAt { get; private set; }
 
         private static float _pendingUntil;
+        private static bool _unequip;
         private static bool _asked;
         private static bool _queueSeen;
         private static string _lastBusy;
@@ -150,7 +154,7 @@ namespace ScrollToArms
 
             // A pick that arrived changes the hands itself, so it is settled before that check, and
             // the hands it produced become the ones a pick still being chosen started from.
-            if (Pending != null && Pending.m_equipped)
+            if (Pending != null && Done(Pending))
             {
                 ClearPending();
                 RememberHands(player);
@@ -235,7 +239,7 @@ namespace ScrollToArms
             var slot = SlotOf(player, target);
             if (slot < 0) return;
 
-            PickSlot(player, slot, now);
+            PickSlot(player, slot, now, false);
         }
 
         private static void ReadWheel(Player player, float now)
@@ -295,19 +299,22 @@ namespace ScrollToArms
             var slot = Cursor;
             Cursor = -1;
 
-            if (slot >= 0) PickSlot(player, slot, now);
+            if (slot >= 0) PickSlot(player, slot, now, true);
         }
 
         /// <summary>
-        /// Makes the item in a hotbar slot the pick, from the wheel or from a flip back.
+        /// Makes the item in a hotbar slot the pick, from the wheel or from a flip back. When the
+        /// wheel lands on the slot already in hand, the pick takes that item out of the hand, as
+        /// its number key would; a flip back never does.
         /// </summary>
-        private static void PickSlot(Player player, int slot, float now)
+        private static void PickSlot(Player player, int slot, float now, bool mayUnequip)
         {
             var item = ItemAt(player, slot);
             if (item == null) return;
 
-            // Landing on the earlier pick keeps it as it is.
-            if (item == Pending) return;
+            // Landing on the earlier pick keeps it as it is. A flip back onto an unequip still on
+            // its way withdraws it instead, since the item is still in hand.
+            if (item == Pending && (mayUnequip || !_unequip)) return;
 
             // The latest pick wins, as a second number key would: an earlier one still waiting or
             // in the game's equip bar is withdrawn, including when the wheel went back to the item
@@ -319,10 +326,15 @@ namespace ScrollToArms
                 ClearPending();
             }
 
-            if (item.m_equipped || player.IsEquipActionQueued(item)) return;
+            if (player.IsEquipActionQueued(item)) return;
+
+            // Going back to the item in hand from an earlier pick only withdraws that pick.
+            var unequip = item.m_equipped;
+            if (unequip && (!mayUnequip || earlier != null)) return;
 
             Pending = item;
             PendingSlot = slot;
+            _unequip = unequip;
             _pendingUntil = now + Plugin.WaitWhileBusy;
             _asked = false;
             _queueSeen = false;
@@ -331,11 +343,11 @@ namespace ScrollToArms
         }
 
         /// <summary>
-        /// Follows a pick until it is in hand. The game can take it straight away, queue it behind
-        /// its equip bar, refuse it while busy, or drop a queued equip when the player runs, jumps,
-        /// dodges or attacks. A pick refused or dropped that way is asked for again as soon as the
-        /// game allows, within WaitWhileBusy seconds. The equip bar itself does not count against
-        /// that time.
+        /// Follows a pick until the game has carried it out. The game can do so straight away,
+        /// queue it behind its equip bar, refuse it while busy, or drop a queued equip or unequip
+        /// when the player runs, jumps, dodges or attacks. A pick refused or dropped that way is
+        /// asked for again as soon as the game allows, within WaitWhileBusy seconds. The equip bar
+        /// itself does not count against that time.
         /// </summary>
         private static void TryEquipPending(Player player, float now)
         {
@@ -370,9 +382,9 @@ namespace ScrollToArms
 
             _lastBusy = null;
 
-            // Asked before, never queued and still not in hand: the game refused it for a reason
-            // of its own, such as a broken item or a world level, and asking again would repeat
-            // its message every frame.
+            // Asked before, never queued and still not done: the game refused it for a reason of
+            // its own, such as a broken item or a world level, and asking again would repeat its
+            // message every frame.
             if (_asked && !_queueSeen)
             {
                 Lose(now);
@@ -380,7 +392,7 @@ namespace ScrollToArms
                 return;
             }
 
-            if (!_asked) BuildToolHint.Watch(item, now);
+            if (!_asked && !_unequip) BuildToolHint.Watch(item, now);
             _asked = true;
             _queueSeen = false;
 
@@ -389,7 +401,7 @@ namespace ScrollToArms
             if (Stow.IsStowed(player, item)) Stow.Unstow(player);
             else ToggleEquipped(player, item);
 
-            if (item.m_equipped)
+            if (Done(item))
             {
                 ClearPending();
             }
@@ -550,10 +562,14 @@ namespace ScrollToArms
             Sound.Play(Sound.Cue.Lost);
         }
 
+        /// <summary>True once the pick's item is in hand, or out of it for an unequip.</summary>
+        private static bool Done(ItemDrop.ItemData item) => item.m_equipped != _unequip;
+
         private static void ClearPending()
         {
             Pending = null;
             PendingSlot = -1;
+            _unequip = false;
             _lastBusy = null;
         }
 
