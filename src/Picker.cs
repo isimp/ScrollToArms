@@ -6,22 +6,22 @@ namespace ScrollToArms
 {
     /// <summary>
     /// The pick: which hotbar slot the wheel points at, and whether an item is waiting for the
-    /// game to allow it into your hand.
+    /// game to allow it into the player's hand.
     ///
     /// Items are equipped through Player.ToggleEquipped, never Player.UseHotbarItem. The hotbar
-    /// path uses the item on whatever you are looking at, eats food and unequips the item already
-    /// in hand, none of which a wheel sweeping past a slot should do. ToggleEquipped keeps the
-    /// game's own rules: an item with an equip time is queued with its progress bar, and the hand
-    /// rules decide what the new item replaces.
+    /// path uses the item on whatever the player is looking at, eats food and unequips the item
+    /// already in hand, none of which a wheel sweeping past a slot should do. ToggleEquipped keeps
+    /// the game's own rules: an item with an equip time is queued with its progress bar, and the
+    /// hand rules decide what the new item replaces.
     /// </summary>
     public static class Picker
     {
         public const int Slots = 8;
 
-        /// <summary>True from the first notch until the pick is equipped or dropped.</summary>
+        /// <summary>True from the first notch until the pick is committed or dropped.</summary>
         public static bool Choosing { get; private set; }
 
-        /// <summary>The hotbar slot the wheel points at, 0 to 7.</summary>
+        /// <summary>The hotbar slot the wheel points at, 0 to 7, or -1 while not choosing.</summary>
         public static int Cursor { get; private set; } = -1;
 
         /// <summary>A committed pick that is not in hand yet.</summary>
@@ -122,7 +122,7 @@ namespace ScrollToArms
 
             var now = Time.time;
 
-            // Before the CanPick gate: build mode is exactly the state that gate refuses.
+            // Outside the CanPick gate: the message depends only on the tool arriving in hand.
             BuildToolHint.Update(player, now);
 
             if (!CanPick(player))

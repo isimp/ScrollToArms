@@ -34,8 +34,9 @@ namespace ScrollToArms
 
         public static ManualLogSource Log;
 
-        // Set when the camera patch fails to apply. Without it the wheel would zoom and scroll the
-        // hotbar at the same time, so the mod stays out of the way instead.
+        // Set when the camera patch cannot be requested at all. Without it the wheel would zoom
+        // and scroll the hotbar at the same time, so the mod stays out of the way instead. A patch
+        // that is requested but finds nothing is handled by WheelReads.CameraReady.
         private static bool _broken;
 
         private static ConfigEntry<bool> _enabled;
@@ -109,7 +110,7 @@ namespace ScrollToArms
 
             _waitWhileBusy = Config.Bind("Rules", "WaitWhileBusy", 2f,
                 new ConfigDescription(
-                    "The game refuses to change what you hold while you attack, dodge or swim, and cancels an item's equip time while you run, jump or attack. A pick refused or cancelled that way is kept for this many seconds, with its slot pulsing on the hotbar, and equipped as soon as the game allows it. If the time runs out first, the slot flashes red and the pick is dropped. The game's own equip bar does not count against this time. 0 drops the pick instead, the way the number keys do.",
+                    "The game refuses to change what you hold while you attack, dodge or swim, and cancels an item's equip time while you run, jump or attack. A pick refused or cancelled that way is kept for this many seconds, with its slot pulsing on the hotbar, and equipped as soon as the game allows it. If the time runs out first, the slot flashes red and the pick is dropped. The game's own equip bar does not count against this time. 0 drops the pick at once, the way the number keys do.",
                     new AcceptableValueRange<float>(0f, 3f)));
 
             _harmony = new Harmony(Guid);
