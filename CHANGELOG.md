@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+The frame ticks as it moves, and a lost pick makes a sound. Both follow the game's sound effects volume and only you hear them.
+
 ## 0.2.0
 
 A quick tap on Alt goes back to what you held before.

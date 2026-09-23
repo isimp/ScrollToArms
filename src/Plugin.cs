@@ -30,7 +30,7 @@ namespace ScrollToArms
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "isimp.ScrollToArms";
-        public const string Version = "0.2.0";
+        public const string Version = "0.2.1";
 
         public static ManualLogSource Log;
 
@@ -53,6 +53,7 @@ namespace ScrollToArms
         private static ConfigEntry<bool> _showItemName;
         private static ConfigEntry<bool> _showWheelMode;
         private static ConfigEntry<bool> _showCenterHints;
+        private static ConfigEntry<bool> _playSounds;
         private static ConfigEntry<float> _waitWhileBusy;
 
         public static bool Enabled => !_broken && (_enabled == null || _enabled.Value);
@@ -69,6 +70,7 @@ namespace ScrollToArms
         public static bool ShowItemName => _showItemName == null || _showItemName.Value;
         public static bool ShowWheelMode => _showWheelMode == null || _showWheelMode.Value;
         public static bool ShowCenterHints => _showCenterHints == null || _showCenterHints.Value;
+        public static bool PlaySounds => _playSounds == null || _playSounds.Value;
         public static float WaitWhileBusy => _waitWhileBusy?.Value ?? 2f;
 
         private const string DefaultStepAsideTools = "BlueprintRune, PlanHammer";
@@ -133,6 +135,9 @@ namespace ScrollToArms
             _showCenterHints = Config.Bind("Display", "ShowCenterHints", true,
                 "Show a message in the middle of the screen when the wheel takes out a tool that changes what the wheel does.");
 
+            _playSounds = Config.Bind("Display", "PlaySounds", true,
+                "Play a soft tick as the frame moves and a short sound when a pick is lost. Only you hear them, at the game's own sound effects volume.");
+
             _waitWhileBusy = Config.Bind("Rules", "WaitWhileBusy", 2f,
                 new ConfigDescription(
                     "The game refuses to change what you hold while you attack, dodge or swim, and cancels an item's equip time while you run, jump or attack. A pick refused or cancelled that way is kept for this many seconds, with its slot pulsing on the hotbar, and equipped as soon as the game allows it. If the time runs out first, the slot flashes red and the pick is dropped. The game's own equip bar does not count against this time. 0 drops the pick at once, the way the number keys do.",
@@ -151,11 +156,13 @@ namespace ScrollToArms
 
         private void OnDestroy()
         {
+            Sound.Mute();
             _harmony?.UnpatchSelf();
         }
 
         private void Update()
         {
+            Sound.Prepare();
             Picker.Update(Time.deltaTime);
         }
 

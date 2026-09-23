@@ -51,6 +51,7 @@ $sources = @(
     (Join-Path $managed "assembly_guiutils.dll"),
     (Join-Path $managed "Unity.TextMeshPro.dll"),
     (Join-Path $managed "UnityEngine.dll"),
+    (Join-Path $managed "UnityEngine.AudioModule.dll"),
     (Join-Path $managed "UnityEngine.CoreModule.dll"),
     (Join-Path $managed "UnityEngine.InputLegacyModule.dll"),
     (Join-Path $managed "UnityEngine.UI.dll"),

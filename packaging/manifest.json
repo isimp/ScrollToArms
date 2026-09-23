@@ -1,6 +1,6 @@
 {
   "name": "ScrollToArms",
-  "version_number": "0.2.0",
+  "version_number": "0.2.1",
   "website_url": "https://github.com/isimp/ScrollToArms",
   "description": "Hold Left Alt and scroll to pick the weapon or tool in your hand from the hotbar, while the game still decides when it can be changed.",
   "dependencies": []

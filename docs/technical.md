@@ -18,6 +18,8 @@ With both hands empty after the Hide key, the cursor starts from the stowed item
 
 A tap on the modifier goes back to what the hands held before, through the same path as a pick. A tap is a press shorter than 0.3 seconds with no other key, mouse button or wheel movement in between and the game window in focus, so chords with the modifier and holding it for other mods never count. While a pick is on its way, a tap goes back to what is in hand, which withdraws the pick; with empty hands it goes back to the last thing held, which brings stowed items back.
 
+The tick and the lost-pick sound are copies of the game's own sound prefabs, `sfx_gui_inventory_open` and `sfx_gui_inventory_close`, found once on entering the world, from the scene or from an index of the game's effect lists. Each copy is made under an inactive holder, its audio sent to the game's interface mixer group and made two-dimensional, and only then activated, so its `ZSFX` plays it as the game plays its own sounds, including `AudioMan`'s limit on the same sound repeating. The game sets that group's level from the master and sound effects volume. The copy's network view is kept from starting, so only the local player hears it. Ticks are at least 40 milliseconds apart.
+
 The modifier is read as a plain key rather than a BepInEx shortcut, because a shortcut does not fire while any other key is held.
 
 `SkipItems` and `StepAsideTools` match an item by the name the game shows for it in the current language, by its name token or by its prefab name, ignoring case.

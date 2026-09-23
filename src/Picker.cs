@@ -283,7 +283,10 @@ namespace ScrollToArms
             _tapSpoiled = true;
 
             var next = NextStop(player, Cursor, step);
-            if (next >= 0) Cursor = next;
+            if (next < 0 || next == Cursor) return;
+
+            Cursor = next;
+            Sound.Play(Sound.Cue.Tick);
         }
 
         private static void CommitPick(Player player, float now)
@@ -544,6 +547,7 @@ namespace ScrollToArms
         {
             LostSlot = PendingSlot;
             LostAt = now;
+            Sound.Play(Sound.Cue.Lost);
         }
 
         private static void ClearPending()
