@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Reflection;
 using HarmonyLib;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -29,6 +30,7 @@ namespace ScrollToArms
         private static readonly Type ElementType = AccessTools.Inner(typeof(HotkeyBar), "ElementData");
         private static readonly FieldInfo SelectionField = ElementType == null ? null : AccessTools.Field(ElementType, "m_selection");
         private static readonly FieldInfo QueuedField = ElementType == null ? null : AccessTools.Field(ElementType, "m_queued");
+        private static readonly FieldInfo GoField = ElementType == null ? null : AccessTools.Field(ElementType, "m_go");
 
         private static readonly bool Available = CheckAvailable();
 
@@ -52,9 +54,12 @@ namespace ScrollToArms
             var bar = FindBar();
             if (player == null || bar == null)
             {
+                HideName();
                 _drawn = false;
                 return;
             }
+
+            if (!(ElementsField.GetValue(bar) is IList elements)) return;
 
             var frame = Picker.Choosing ? Picker.Cursor : Picker.PendingSlot;
             var waiting = Picker.PendingSlot;
@@ -67,10 +72,9 @@ namespace ScrollToArms
             {
                 if (_drawn) Restore(bar, player);
                 _drawn = false;
+                DrawLabel(bar, player, elements, -1, -1, 0f);
                 return;
             }
-
-            if (!(ElementsField.GetValue(bar) is IList elements)) return;
 
             if (flash < 0) StopFlash();
 
@@ -92,7 +96,103 @@ namespace ScrollToArms
                 SetActive(QueuedField.GetValue(element) as GameObject, queued);
             }
 
+            DrawLabel(bar, player, elements, frame, flash, flashAge / FlashTime);
             _drawn = true;
+        }
+
+        // The name sits this far above the bar, in the bar's own units, at this size relative to
+        // the slot number it is copied from, and this faint, so it informs without drawing the eye.
+        private const float NameGap = 6f;
+        private const float NameScale = 0.95f;
+        private const float NameAlpha = 0.55f;
+
+        private static TMP_Text _name;
+
+        /// <summary>
+        /// The line above the bar, at a fixed spot above its left end and growing to the right, so
+        /// a long line never runs off the screen. While a pick is shown it names the item under the
+        /// frame, and a lost pick's name fades out in red with its frame. Otherwise it says what the
+        /// wheel does, when that is worth saying.
+        /// </summary>
+        private static void DrawLabel(HotkeyBar bar, Player player, IList elements, int frame, int flash, float flashProgress)
+        {
+            var slot = frame >= 0 ? frame : flash;
+            var item = slot >= 0 ? Picker.ItemAt(player, slot) : null;
+
+            string text = null;
+            var colour = Color.white;
+            if (item != null)
+            {
+                if (Plugin.ShowItemName) text = ItemNameList.ShownName(item.m_shared.m_name);
+                if (frame < 0)
+                {
+                    colour = FlashColor;
+                    colour.a = 1f - Mathf.Clamp01(flashProgress);
+                }
+            }
+            else
+            {
+                text = WheelMode.Text(player);
+            }
+
+            var first = text != null && GoField != null && elements.Count > 0 ? GoField.GetValue(elements[0]) as GameObject : null;
+            if (first == null)
+            {
+                HideName();
+                return;
+            }
+
+            var label = NameLabel(bar, first);
+            if (label == null) return;
+
+            label.text = text;
+
+            colour.a *= NameAlpha;
+            label.color = colour;
+
+            // Above the top left corner of the first slot, whatever its pivot and anchors are.
+            var corners = new Vector3[4];
+            ((RectTransform)first.transform).GetWorldCorners(corners);
+            label.rectTransform.position = corners[1] + Vector3.up * (NameGap * first.transform.lossyScale.y);
+
+            if (!label.gameObject.activeSelf) label.gameObject.SetActive(true);
+        }
+
+        /// <summary>
+        /// The label, made on first use as a copy of a slot's own number text, so it has the
+        /// hotbar's font and outline. It belongs to the bar, so a rebuilt slot does not take it
+        /// along, and it goes with the bar when the Hud does.
+        /// </summary>
+        private static TMP_Text NameLabel(HotkeyBar bar, GameObject slot)
+        {
+            if (_name != null) return _name;
+
+            TMP_Text template = null;
+            var binding = slot.transform.Find("binding");
+            if (binding != null) template = binding.GetComponent<TMP_Text>();
+            if (template == null) template = slot.GetComponentInChildren<TMP_Text>(true);
+            if (template == null) return null;
+
+            var copy = UnityEngine.Object.Instantiate(template.gameObject, bar.transform, false);
+            copy.name = "ScrollToArmsItemName";
+
+            _name = copy.GetComponent<TMP_Text>();
+            _name.alignment = TextAlignmentOptions.BottomLeft;
+            _name.textWrappingMode = TextWrappingModes.NoWrap;
+            _name.overflowMode = TextOverflowModes.Overflow;
+            _name.fontSize = template.fontSize * NameScale;
+            _name.raycastTarget = false;
+
+            var rect = _name.rectTransform;
+            rect.pivot = new Vector2(0f, 0f);
+            rect.sizeDelta = new Vector2(400f, rect.sizeDelta.y);
+
+            return _name;
+        }
+
+        private static void HideName()
+        {
+            if (_name != null && _name.gameObject.activeSelf) _name.gameObject.SetActive(false);
         }
 
         // How long a lost pick's red frame takes to fade out.
@@ -123,7 +223,7 @@ namespace ScrollToArms
                 }
             }
 
-            var group = selection.GetComponent<CanvasGroup>() ?? selection.AddComponent<CanvasGroup>();
+            var group = GroupOf(selection);
 
             // The same frame may have been pulsing for the wait that just ran out; the fade owns
             // its opacity from here on.
@@ -166,12 +266,20 @@ namespace ScrollToArms
                 return;
             }
 
-            var group = selection.GetComponent<CanvasGroup>() ?? selection.AddComponent<CanvasGroup>();
+            var group = GroupOf(selection);
             if (_pulsed != group) StopPulse();
             _pulsed = group;
 
             var wave = 0.5f - 0.5f * Mathf.Cos((Time.time - Picker.WaitingSince) * PulseRate);
             group.alpha = Mathf.Lerp(PulseLow, 1f, wave);
+        }
+
+        // An explicit Unity null check: the ?? operator does not see a destroyed component as null.
+        private static CanvasGroup GroupOf(GameObject selection)
+        {
+            var group = selection.GetComponent<CanvasGroup>();
+            if (group == null) group = selection.AddComponent<CanvasGroup>();
+            return group;
         }
 
         private static void StopPulse()
@@ -185,6 +293,7 @@ namespace ScrollToArms
         {
             StopPulse();
             StopFlash();
+            HideName();
             if (!(ElementsField.GetValue(bar) is IList elements)) return;
 
             var gamepad = ZInput.IsGamepadActive();

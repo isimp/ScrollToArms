@@ -6,6 +6,7 @@ namespace ScrollToArms
     /// A tool on the StepAsideTools list keeps the modifier and the wheel for itself, and so does
     /// any build tool when the piece rotation could not be patched. The wheel cannot switch away
     /// from those, but the game's Hide key can: it puts the hand items away even in build mode.
+    /// So can a tap on the modifier when FlipBack is on.
     ///
     /// Any other build tool gives the plain wheel to the piece rotation, with the modifier and the
     /// wheel still picking from the hotbar. With PlainScroll on Zoom that matches the game's own
@@ -66,42 +67,27 @@ namespace ScrollToArms
 
         private static void Show(Player player, ItemDrop.ItemData item, Kind kind)
         {
-            var localization = Localization.instance;
-            var name = localization != null ? localization.Localize(item.m_shared.m_name) : item.m_shared.m_name;
+            if (!Plugin.ShowCenterHints) return;
+
+            var name = ItemNameList.ShownName(item.m_shared.m_name);
+            var modifier = KeyText.Marked(KeyText.Modifier);
 
             string text;
             if (kind == Kind.WheelRotates)
             {
-                text = $"{name} is out: the wheel rotates the piece. {Key(KeyName(Plugin.Modifier))} with the wheel switches.";
+                text = $"{name} is out: the wheel rotates the piece. {modifier} with the wheel switches.";
             }
             else
             {
-                var hide = ZInput.instance != null ? ZInput.instance.GetBoundKeyString("Hide", emptyStringOnMissing: true) : "";
-                if (!string.IsNullOrEmpty(hide) && localization != null) hide = localization.Localize(hide);
-
+                var hide = KeyText.Hide;
                 text = string.IsNullOrEmpty(hide)
                     ? $"{name} keeps the wheel. Put it away to scroll the hotbar again."
-                    : $"{name} keeps the wheel. {Key(hide)} puts it away.";
+                    : $"{name} keeps the wheel. {KeyText.Marked(hide)} puts it away.";
+
+                if (Plugin.FlipBack) text += $" A tap on {modifier} goes back.";
             }
 
             player.Message(MessageHud.MessageType.Center, text);
-        }
-
-        // The game's own look for a key in a message.
-        private static string Key(string label) => $"[<color=yellow><b>{label}</b></color>]";
-
-        // "LeftAlt" reads as "Left Alt".
-        private static string KeyName(UnityEngine.KeyCode key)
-        {
-            var raw = key.ToString();
-            var builder = new System.Text.StringBuilder(raw.Length + 4);
-            for (var i = 0; i < raw.Length; i++)
-            {
-                if (i > 0 && char.IsUpper(raw[i]) && !char.IsUpper(raw[i - 1])) builder.Append(' ');
-                builder.Append(raw[i]);
-            }
-
-            return builder.ToString();
         }
     }
 }

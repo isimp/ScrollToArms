@@ -49,6 +49,7 @@ $sources = @(
     (Join-Path $managed "assembly_valheim.dll"),
     (Join-Path $managed "assembly_utils.dll"),
     (Join-Path $managed "assembly_guiutils.dll"),
+    (Join-Path $managed "Unity.TextMeshPro.dll"),
     (Join-Path $managed "UnityEngine.dll"),
     (Join-Path $managed "UnityEngine.CoreModule.dll"),
     (Join-Path $managed "UnityEngine.InputLegacyModule.dll"),

@@ -30,7 +30,7 @@ namespace ScrollToArms
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "isimp.ScrollToArms";
-        public const string Version = "0.1.1";
+        public const string Version = "0.2.0";
 
         public static ManualLogSource Log;
 
@@ -48,6 +48,11 @@ namespace ScrollToArms
         private static ConfigEntry<bool> _invert;
         private static ConfigEntry<bool> _skipBuildTools;
         private static ConfigEntry<string> _stepAsideTools;
+        private static ConfigEntry<string> _skipItems;
+        private static ConfigEntry<bool> _flipBack;
+        private static ConfigEntry<bool> _showItemName;
+        private static ConfigEntry<bool> _showWheelMode;
+        private static ConfigEntry<bool> _showCenterHints;
         private static ConfigEntry<float> _waitWhileBusy;
 
         public static bool Enabled => !_broken && (_enabled == null || _enabled.Value);
@@ -59,6 +64,11 @@ namespace ScrollToArms
         public static bool Invert => _invert != null && _invert.Value;
         public static bool SkipBuildTools => _skipBuildTools != null && _skipBuildTools.Value;
         public static string StepAsideTools => _stepAsideTools?.Value ?? DefaultStepAsideTools;
+        public static string SkipItems => _skipItems?.Value ?? "";
+        public static bool FlipBack => _flipBack == null || _flipBack.Value;
+        public static bool ShowItemName => _showItemName == null || _showItemName.Value;
+        public static bool ShowWheelMode => _showWheelMode == null || _showWheelMode.Value;
+        public static bool ShowCenterHints => _showCenterHints == null || _showCenterHints.Value;
         public static float WaitWhileBusy => _waitWhileBusy?.Value ?? 2f;
 
         private const string DefaultStepAsideTools = "BlueprintRune, PlanHammer";
@@ -105,8 +115,23 @@ namespace ScrollToArms
             _skipBuildTools = Config.Bind("Selection", "SkipBuildTools", false,
                 "Pass over the hammer, hoe, cultivator and other tools that open build mode. With them in hand the plain wheel rotates the piece being placed, and the modifier with the wheel still picks from the hotbar.");
 
+            _skipItems = Config.Bind("Selection", "SkipItems", "",
+                "Items the wheel passes over, separated by commas. Use the name shown in game, such as Bronze Pickaxe, or the item's prefab name.");
+
             _stepAsideTools = Config.Bind("Selection", "StepAsideTools", DefaultStepAsideTools,
-                "Tools whose own controls use the modifier with the wheel. While one of them is in hand, the modifier and the wheel are left to the tool, and the Hide key or a number key switches away. Item prefab names, separated by commas. The defaults are the Blueprint Rune and Plan Hammer from PlanBuild.");
+                "Tools whose own controls use the modifier with the wheel. While one of them is in hand, the modifier and the wheel are left to the tool, and the Hide key, a number key or a tap on the modifier switches away. Names shown in game or prefab names, separated by commas. The defaults are the Blueprint Rune and Plan Hammer from PlanBuild.");
+
+            _flipBack = Config.Bind("Selection", "FlipBack", true,
+                "Tap the modifier without scrolling to go back to the weapon or tool held before. A tap is a short press with no other key, mouse button or wheel in between. While a pick is still on its way, a tap cancels it and keeps what is in hand.");
+
+            _showItemName = Config.Bind("Display", "ShowItemName", true,
+                "Show the name of the item under the frame above the hotbar while picking.");
+
+            _showWheelMode = Config.Bind("Display", "ShowWheelMode", true,
+                "Show what the wheel does in the same spot above the hotbar when it is worth knowing: while the modifier is held, while a build tool takes the plain wheel for rotating the piece with PlainScroll on Hotbar, and while a tool on the StepAsideTools list keeps the wheel. Nothing is shown in ordinary play.");
+
+            _showCenterHints = Config.Bind("Display", "ShowCenterHints", true,
+                "Show a message in the middle of the screen when the wheel takes out a tool that changes what the wheel does.");
 
             _waitWhileBusy = Config.Bind("Rules", "WaitWhileBusy", 2f,
                 new ConfigDescription(

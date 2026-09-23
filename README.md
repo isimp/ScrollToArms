@@ -1,6 +1,6 @@
 # ScrollToArms
 
-Pick the weapon or tool in your hand with the mouse wheel. Hold Left Alt and scroll, and a frame moves along your hotbar. Let go of Alt and whatever it rests on goes into your hand.
+Pick the weapon or tool in your hand with the mouse wheel. Hold Left Alt and scroll, and a frame moves along your hotbar with the item's name above it. Let go of Alt and whatever it rests on goes into your hand. A quick tap on Alt goes back to what you held before, and whenever the wheel does something else, such as rotating a building piece, the same spot above the hotbar says so.
 
 ![The selection frame on the hotbar](https://raw.githubusercontent.com/isimp/ScrollToArms/main/docs/images/screenshot.webp)
 
@@ -16,7 +16,7 @@ Most of ScrollToArms was written by Claude Code (Anthropic), which did the heavy
 
 ## Settings
 
-All settings are in BepInEx/config/isimp.ScrollToArms.cfg, each with a description. Besides the modes above, they cover skipping build tools, tools that keep the wheel for themselves (PlanBuild's by default) and how long a pick may wait.
+All settings are in BepInEx/config/isimp.ScrollToArms.cfg, each with a description. Besides the modes above, they cover items the wheel should pass over, skipping build tools, tools that keep the wheel for themselves (PlanBuild's by default) and how long a pick may wait. Items are named as the game shows them, such as Bronze Pickaxe.
 
 ## More
 

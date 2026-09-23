@@ -57,6 +57,19 @@ namespace ScrollToArms
         private static ItemDrop.ItemData _heldLeft;
         private static bool _warnedNotPatched;
 
+        // What the hands held most recently and before that, for flipping back. Empty hands, as
+        // after the Hide key, do not count as a change.
+        private static ItemDrop.ItemData _current;
+        private static ItemDrop.ItemData _previous;
+
+        private static float _tapStart;
+        private static bool _tapSpoiled = true;
+
+        // Longer than this is a hold, not a tap.
+        private const float TapTime = 0.3f;
+
+        private static readonly ItemNameList Skipped = new ItemNameList(() => Plugin.SkipItems);
+
         // The same step vanilla uses to rotate a building piece one notch at a time
         // (Player.m_scrollAmountThreshold), so one notch moves the cursor by one slot.
         private const float NotchThreshold = 0.1f;
@@ -125,8 +138,12 @@ namespace ScrollToArms
             // Outside the CanPick gate: the message depends only on the tool arriving in hand.
             BuildToolHint.Update(player, now);
 
+            TrackHands(player);
+            var tapped = ReadTap(now);
+
             if (!CanPick(player))
             {
+                _tapSpoiled = true;
                 Reset();
                 return;
             }
@@ -155,8 +172,70 @@ namespace ScrollToArms
                 var paused = Plugin.EffectiveCommit == Commit.AfterPause && now - _lastNotch >= Plugin.PauseTime;
                 if (released || paused) CommitPick(player, now);
             }
+            else if (tapped && Plugin.FlipBack)
+            {
+                Flip(player, now);
+            }
 
             if (Pending != null) TryEquipPending(player, now);
+        }
+
+        /// <summary>
+        /// Follows what the hands hold. A change to another item moves the last one into
+        /// <see cref="_previous"/>; empty hands leave both as they are.
+        /// </summary>
+        private static void TrackHands(Player player)
+        {
+            var held = player.RightItem ?? player.LeftItem;
+            if (held == null || held == _current) return;
+
+            _previous = _current;
+            _current = held;
+        }
+
+        /// <summary>
+        /// True on the frame the modifier is let go after a tap: a press shorter than TapTime with
+        /// no other key, mouse button or wheel notch in between, and the game window in focus
+        /// throughout. Anything else makes it a hold, which belongs to other uses of the key.
+        /// </summary>
+        private static bool ReadTap(float now)
+        {
+            var key = Plugin.Modifier;
+
+            if (Input.GetKeyDown(key))
+            {
+                _tapStart = now;
+                _tapSpoiled = false;
+                return false;
+            }
+
+            if (Input.GetKey(key))
+            {
+                // The wheel counts whatever it was used for, zoom included.
+                if (Input.anyKeyDown || !Application.isFocused || ZInput.GetMouseScrollWheel() != 0f) _tapSpoiled = true;
+                return false;
+            }
+
+            if (!Input.GetKeyUp(key)) return false;
+
+            var tapped = !_tapSpoiled && now - _tapStart <= TapTime;
+            _tapSpoiled = true;
+            return tapped;
+        }
+
+        /// <summary>
+        /// Goes back to what the hands held before. While a pick is still on its way, what is in
+        /// hand now is the one to go back to, which withdraws the pick. With empty hands, as after
+        /// the Hide key, it is the last thing held, which brings the stowed items back.
+        /// </summary>
+        private static void Flip(Player player, float now)
+        {
+            var empty = player.RightItem == null && player.LeftItem == null;
+            var target = Pending != null || empty ? _current : _previous;
+            var slot = SlotOf(player, target);
+            if (slot < 0) return;
+
+            PickSlot(player, slot, now);
         }
 
         private static void ReadWheel(Player player, float now)
@@ -200,6 +279,9 @@ namespace ScrollToArms
                 RememberHands(player);
             }
 
+            // Scrolling makes the press a hold, not a tap.
+            _tapSpoiled = true;
+
             var next = NextStop(player, Cursor, step);
             if (next >= 0) Cursor = next;
         }
@@ -210,8 +292,14 @@ namespace ScrollToArms
             var slot = Cursor;
             Cursor = -1;
 
-            if (slot < 0) return;
+            if (slot >= 0) PickSlot(player, slot, now);
+        }
 
+        /// <summary>
+        /// Makes the item in a hotbar slot the pick, from the wheel or from a flip back.
+        /// </summary>
+        private static void PickSlot(Player player, int slot, float now)
+        {
             var item = ItemAt(player, slot);
             if (item == null) return;
 
@@ -323,6 +411,9 @@ namespace ScrollToArms
             return null;
         }
 
+        /// <summary>True where the hotbar can be used, for the wheel indicator.</summary>
+        public static bool Usable(Player player) => CanPick(player);
+
         /// <summary>
         /// Where the hotbar can be used: the same gate the vanilla hotbar applies to its own
         /// gamepad cursor. The piece menu is part of it, so build mode counts only while placing.
@@ -347,7 +438,8 @@ namespace ScrollToArms
         /// <summary>
         /// A slot the cursor stops on: something held in the hands that can be equipped now.
         /// Food, armour and materials are passed over, and so is a broken item, which the game
-        /// would refuse. A tool that opens build mode is passed over when SkipBuildTools is on.
+        /// would refuse. A tool that opens build mode is passed over when SkipBuildTools is on, and
+        /// so is anything on the SkipItems list.
         /// </summary>
         private static bool IsStop(ItemDrop.ItemData item)
         {
@@ -368,6 +460,7 @@ namespace ScrollToArms
             }
 
             if (Plugin.SkipBuildTools && item.m_shared.m_buildPieces != null) return false;
+            if (Skipped.Contains(item)) return false;
 
             return !(item.m_shared.m_useDurability && item.m_durability <= 0f);
         }
