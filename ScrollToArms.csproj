@@ -5,7 +5,7 @@
     <AssemblyName>ScrollToArms</AssemblyName>
     <RootNamespace>ScrollToArms</RootNamespace>
     <LangVersion>latest</LangVersion>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>isimp</Authors>
     <Product>ScrollToArms</Product>
     <Description>Pick the weapon or tool in your hand with the mouse wheel, while the game still decides when it can be changed.</Description>

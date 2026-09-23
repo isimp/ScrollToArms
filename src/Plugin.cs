@@ -13,7 +13,7 @@ namespace ScrollToArms
         Hotbar
     }
 
-    /// <summary>When a slot picked with the wheel is put in your hand.</summary>
+    /// <summary>When a slot picked with the wheel is put in the player's hand.</summary>
     public enum Commit
     {
         OnRelease,
@@ -30,7 +30,7 @@ namespace ScrollToArms
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "isimp.ScrollToArms";
-        public const string Version = "0.1.0";
+        public const string Version = "0.1.1";
 
         public static ManualLogSource Log;
 
