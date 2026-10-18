@@ -1,3 +1,4 @@
+using System.Collections;
 using BepInEx;
 
 namespace ScrollToArms.SelfTest
@@ -14,6 +15,8 @@ namespace ScrollToArms.SelfTest
     {
         public const string Guid = "isimp.ScrollToArms.SelfTest";
 
+        private bool _running;
+
         private void Awake()
         {
             // Registered with isCheat false, which also makes it reachable from chat with a slash.
@@ -25,14 +28,28 @@ namespace ScrollToArms.SelfTest
                     return;
                 }
 
-                if (Player.m_localPlayer == null)
+                if (_running)
                 {
-                    args.Context.OrNull()?.AddString("The ScrollToArms self-test runs in a world, with your character in it.");
+                    args.Context.OrNull()?.AddString("The ScrollToArms self-test is already running.");
                     return;
                 }
 
-                args.Context.OrNull()?.AddString(new Tests(Logger).Run());
+                if (Player.m_localPlayer == null || Player.m_localPlayer.IsDead())
+                {
+                    args.Context.OrNull()?.AddString("The ScrollToArms self-test runs in a world, with you alive in it.");
+                    return;
+                }
+
+                args.Context.OrNull()?.AddString("ScrollToArms self-test running; close the console. Results go to LogOutput.log and the screen.");
+                StartCoroutine(Run());
             });
+        }
+
+        private IEnumerator Run()
+        {
+            _running = true;
+            yield return new Tests(Logger).Run();
+            _running = false;
         }
     }
 }
