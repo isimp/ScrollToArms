@@ -11,7 +11,7 @@ namespace ScrollToArms.Standards
         public static readonly Dictionary<string, string> List = new Dictionary<string, string>
         {
             ["src/Plugin.cs"] = "the plugin class, which BepInEx starts with the game, with its settings",
-            ["src/Picker.cs"] = "reads the wheel and the player's hands and equips through the game's Player; src/HotbarWalk.cs holds its walk along the bar",
+            ["src/Picker.cs"] = "reads the player's hands, hotbar, keys and wheel for src/PickFlow.cs and equips through the game's Player",
             ["src/WheelReads.cs"] = "patches the game's camera zoom and piece rotation with a Harmony transpiler",
             ["src/HotbarView.cs"] = "sets the game's own hotbar markers with Unity UI, as src/PickLook.cs says",
             ["src/WheelMode.cs"] = "reads Unity's input and the player for the wheel line, whose words src/WheelWords.cs holds",
