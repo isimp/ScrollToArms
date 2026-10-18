@@ -55,8 +55,6 @@ namespace ScrollToArms
         private static bool _asked;
         private static bool _queueSeen;
         private static string _lastBusy;
-        private static float _lastNotch;
-        private static float _wheel;
         private static ItemDrop.ItemData _heldRight;
         private static ItemDrop.ItemData _heldLeft;
         private static bool _warnedNotPatched;
@@ -74,12 +72,7 @@ namespace ScrollToArms
 
         private static readonly ItemNameList Skipped = new ItemNameList(() => Plugin.SkipItems);
 
-        // The same step vanilla uses to rotate a building piece one notch at a time
-        // (Player.m_scrollAmountThreshold), so one notch moves the cursor by one slot.
-        private const float NotchThreshold = 0.1f;
-
-        // A partial notch older than this is discarded rather than completed by the next one.
-        private const float WheelMemory = 0.3f;
+        private static readonly Notches Wheel = new Notches();
 
         private static readonly Func<Player, ItemDrop.ItemData, bool> ToggleEquipped = ResolveToggleEquipped();
 
@@ -173,7 +166,7 @@ namespace ScrollToArms
             if (Choosing)
             {
                 var released = Plugin.PlainScroll == PlainScroll.Zoom && !Input.GetKey(Plugin.Modifier);
-                var paused = Plugin.EffectiveCommit == Commit.AfterPause && now - _lastNotch >= Plugin.PauseTime;
+                var paused = Plugin.EffectiveCommit == Commit.AfterPause && now - Wheel.LastNotch >= Plugin.PauseTime;
                 if (released || paused) CommitPick(player, now);
             }
             else if (tapped && Plugin.FlipBack)
@@ -246,27 +239,12 @@ namespace ScrollToArms
         {
             if (!HotbarOwnsWheel())
             {
-                _wheel = 0f;
+                Wheel.Clear();
                 return;
             }
 
-            var delta = ZInput.GetMouseScrollWheel();
-            if (delta == 0f)
-            {
-                if (now - _lastNotch > WheelMemory) _wheel = 0f;
-                return;
-            }
-
-            _wheel += delta;
-            if (Mathf.Abs(_wheel) < NotchThreshold) return;
-
-            // Wheel up reads positive. Up moves left along the bar unless inverted.
-            var step = _wheel > 0f ? -1 : 1;
-            if (Plugin.Invert) step = -step;
-            _wheel = 0f;
-            _lastNotch = now;
-
-            Step(player, step);
+            var step = Wheel.Read(ZInput.GetMouseScrollWheel(), now, Plugin.Invert);
+            if (step != 0) Step(player, step);
         }
 
         private static void Step(Player player, int step)
@@ -488,33 +466,9 @@ namespace ScrollToArms
             return player.GetInventory().GetItemAt(slot, 0);
         }
 
-        /// <summary>
-        /// The next slot to stop on from <paramref name="from"/> in the direction of
-        /// <paramref name="step"/>, or -1 when there is none. From -1 the search starts at the edge
-        /// the step moves away from.
-        /// </summary>
-        private static int NextStop(Player player, int from, int step)
-        {
-            var width = Width(player);
-            if (width <= 0) return -1;
-
-            var slot = from;
-            if (slot < 0) slot = step > 0 ? -1 : width;
-
-            for (var i = 0; i < width; i++)
-            {
-                slot += step;
-                if (slot < 0 || slot >= width)
-                {
-                    if (!Plugin.Wrap) return from >= 0 ? from : -1;
-                    slot = (slot + width) % width;
-                }
-
-                if (IsStop(ItemAt(player, slot))) return slot;
-            }
-
-            return from >= 0 && IsStop(ItemAt(player, from)) ? from : -1;
-        }
+        /// <summary>The next slot on the player's hotbar to stop on (see <see cref="HotbarWalk.NextStop"/>).</summary>
+        private static int NextStop(Player player, int from, int step) =>
+            HotbarWalk.NextStop(Width(player), from, step, Plugin.Wrap, slot => IsStop(ItemAt(player, slot)));
 
         private static int SlotOf(Player player, ItemDrop.ItemData item)
         {
@@ -578,7 +532,7 @@ namespace ScrollToArms
             Choosing = false;
             Cursor = -1;
             ClearPending();
-            _wheel = 0f;
+            Wheel.Clear();
         }
     }
 }
