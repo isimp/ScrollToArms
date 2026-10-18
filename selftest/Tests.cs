@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
@@ -11,7 +12,8 @@ namespace ScrollToArms.SelfTest
     /// <summary>
     /// The self-test: what ScrollToArms found in the game when it started, a walk along the
     /// player's own hotbar the way the wheel walks it, and real picks on it, driven through the
-    /// picker the way a notch and a tap drive it, each checked in the player's hands and on the bar.
+    /// picker the way a notch and a tap drive it, each checked in the player's hands and on the bar,
+    /// a notch past the end of the bar with Wrap off among them.
     /// What the hands held, and what the Hide key put away, is put back at the end. Results are
     /// [selftest] lines in LogOutput.log, ending with a DONE line, which also shows on screen.
     /// </summary>
@@ -178,25 +180,87 @@ namespace ScrollToArms.SelfTest
                 Check(first.m_equipped, "picking the put-away weapon brings it back as the Hide key would", first.m_shared.m_name);
             }
 
+            yield return PastTheEnd(stops);
+
             saved.Restore(_player);
             yield return null;
             Check(saved.Matches(_player), "your hands hold what they held before the test");
         }
 
-        /// <summary>Waits until the item is in hand, or out of it, or the arrival time has passed.</summary>
+        /// <summary>
+        /// Waits until the item is in hand, or out of it, or the arrival time has passed, and checks
+        /// that the bar marks its slot as queued on every frame the game has it in its equip queue.
+        /// An item brought back with the Hide key's items arrives at once and is never queued.
+        /// </summary>
         private IEnumerator Arrival(ItemDrop.ItemData item, bool inHand)
         {
-            var queuedSeen = false;
+            var queued = 0;
+            var marked = 0;
             var until = Time.time + ArrivalTime;
             while (item.m_equipped != inHand && Time.time < until)
             {
                 yield return new WaitForEndOfFrame();
-                if (Picker.PendingSlot >= 0 && MarkerShown(QueuedMarker, Picker.PendingSlot)) queuedSeen = true;
+                if (_player.IsEquipActionQueued(item))
+                {
+                    queued++;
+                    if (MarkerShown(QueuedMarker, SlotOnBar(item))) marked++;
+                }
+
                 yield return null;
             }
 
-            if (item.m_shared.m_equipDuration > 0f && inHand && item.m_equipped)
-                Check(queuedSeen, "the bar shows the game's queued marker while the item is on its way", item.m_shared.m_name);
+            if (queued > 0)
+                Check(marked == queued, "the bar shows the game's queued marker while the game equips the item",
+                    item.m_shared.m_name + ": marked on " + marked + " of " + queued + " frames");
+        }
+
+        /// <summary>
+        /// With Wrap off for the part, which is set in memory only and put back after, a notch past
+        /// the last weapon on the bar starts no pick, and the weapon stays in hand after the pause.
+        /// </summary>
+        private IEnumerator PastTheEnd(List<int> stops)
+        {
+            var config = BepInEx.Bootstrap.Chainloader.PluginInfos[Plugin.Guid].Instance.Config;
+            if (!config.TryGetEntry("Selection", "Wrap", out ConfigEntry<bool> wrap))
+            {
+                Skip("the Wrap setting was not found, so a notch past the end of the bar was not tried");
+                yield break;
+            }
+
+            var last = Picker.ItemAt(_player, stops[stops.Count - 1]);
+            Clear();
+            _player.EquipItem(last, false);
+            yield return null;
+
+            var was = wrap.Value;
+            var saves = config.SaveOnConfigSet;
+            config.SaveOnConfigSet = false;
+            try
+            {
+                wrap.Value = false;
+                Picker.Flow.Step(1);
+                Check(!Picker.Choosing, "with Wrap off a notch past the last weapon starts no pick");
+
+                var until = Time.time + Plugin.PauseTime + 0.5f;
+                while (Time.time < until) yield return null;
+                Check(last.m_equipped, "the last weapon stays in hand after a notch past the end", last.m_shared.m_name);
+            }
+            finally
+            {
+                wrap.Value = was;
+                config.SaveOnConfigSet = saves;
+            }
+        }
+
+        /// <summary>The hotbar slot holding the item, or -1.</summary>
+        private int SlotOnBar(ItemDrop.ItemData item)
+        {
+            for (var slot = 0; slot < Picker.Slots; slot++)
+            {
+                if (Picker.ItemAt(_player, slot) == item) return slot;
+            }
+
+            return -1;
         }
 
         private void Clear()
