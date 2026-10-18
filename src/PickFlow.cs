@@ -295,7 +295,12 @@ namespace ScrollToArms
                 // A pick still on its way counts as already in hand: scrolling continues from it,
                 // and it keeps being followed until the new pick is committed.
                 var start = Pending != null ? PendingSlot : SlotOfHeld();
-                if (NextStop(start, step) < 0) return;
+
+                // A notch that cannot move the frame off where it starts, past the end of the bar
+                // with Wrap off or with the held item the only stop, starts no pick: letting go
+                // would count as landing on the slot already in hand and put that item away.
+                var first = NextStop(start, step);
+                if (first < 0 || first == start) return;
 
                 Choosing = true;
                 Cursor = start;

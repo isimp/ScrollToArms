@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3
+
+A notch of the wheel that cannot move the frame, past the end of the hotbar with Wrap off or with the weapon in hand the only one on the bar, no longer puts that weapon away. With PlainScroll on Hotbar this happened after the pause, without any key.
+
 ## 0.2.2
 
 Landing on the item you already hold unequips it, as its number key would. A tap on Alt brings it back.

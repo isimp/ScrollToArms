@@ -146,16 +146,115 @@ public class PickFlowTests
     }
 
     [Fact]
-    public void ANotchThatCannotMoveTheFrameDoesNotTick()
+    public void WithOneWeaponOnTheBarTheWheelDoesNothing()
     {
         var play = new Play("meat", "axe", "meat");
         play.World.Right = "axe";
 
         play.Press();
         play.Notch(1);
+        Assert.False(play.Flow.Choosing);
+        Assert.Equal(-1, play.Flow.Cursor);
 
+        play.Release();
         Assert.Equal(0, play.World.Ticks);
-        Assert.Equal(1, play.Flow.Cursor);
+        Assert.Empty(play.World.Calls);
+        Assert.Equal("axe", play.World.Right);
+    }
+
+    [Fact]
+    public void WithWrapOffANotchPastTheLastWeaponDoesNothing()
+    {
+        var play = Bar();
+        play.World.Wrap = false;
+        play.World.Right = "torch";
+
+        play.Press();
+        play.Notch(1);
+        Assert.False(play.Flow.Choosing);
+
+        play.Release();
+        Assert.Equal(0, play.World.Ticks);
+        Assert.Empty(play.World.Calls);
+        Assert.Equal("torch", play.World.Right);
+    }
+
+    [Fact]
+    public void WithWrapOffANotchPastTheFirstWeaponDoesNothing()
+    {
+        var play = Bar();
+        play.World.Wrap = false;
+        play.World.Right = "sword";
+
+        play.Pick(-1);
+
+        Assert.Empty(play.World.Calls);
+        Assert.Equal("sword", play.World.Right);
+    }
+
+    [Fact]
+    public void WithPlainScrollOnHotbarANotchPastTheEndNeverPutsTheWeaponAway()
+    {
+        var play = Bar();
+        play.World.PlainScroll = PlainScroll.Hotbar;
+        play.World.Commit = Commit.AfterPause;
+        play.World.Wrap = false;
+        play.World.Right = "torch";
+
+        play.Notch(1);
+        play.Frames(1f);
+
+        Assert.Empty(play.World.Calls);
+        Assert.Equal("torch", play.World.Right);
+    }
+
+    [Fact]
+    public void WithWrapOffAHeldItemTheWheelPassesOverIsNotPickedAtTheEndOfTheBar()
+    {
+        var play = new Play("sword", "meat", "meat_hammer");
+        play.World.Wrap = false;
+        play.World.Right = "meat_hammer";
+
+        play.Press();
+        play.Notch(1);
+        Assert.False(play.Flow.Choosing);
+
+        play.Release();
+        Assert.Empty(play.World.Calls);
+        Assert.Equal("meat_hammer", play.World.Right);
+    }
+
+    [Fact]
+    public void WithWrapOffScrollingAwayAndBackStillPutsTheWeaponAway()
+    {
+        var play = Bar();
+        play.World.Wrap = false;
+        play.World.Right = "torch";
+        play.World.Instant = true;
+
+        play.Pick(-1, 1);
+
+        Assert.Equal(1, play.World.Count("equip torch"));
+        Assert.Null(play.World.Right);
+    }
+
+    [Fact]
+    public void ANotchPastTheEndWhileAPickIsOnItsWayKeepsThatPick()
+    {
+        var play = Bar();
+        play.World.Wrap = false;
+        play.World.Right = "club";
+        play.Pick(1);
+        Assert.Equal("torch", play.Flow.Pending);
+
+        play.Press();
+        play.Notch(1);
+        Assert.False(play.Flow.Choosing);
+
+        play.Release();
+        Assert.Equal("torch", play.Flow.Pending);
+        Assert.Equal(0, play.World.Count("withdraw torch"));
+        Assert.Equal(1, play.World.Count("equip torch"));
     }
 
     [Fact]
