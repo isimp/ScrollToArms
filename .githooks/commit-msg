@@ -1,0 +1,19 @@
+#!/bin/sh
+# Refuses a commit message using a term of the local list (.git/info/forbidden-terms) or a clock
+# time: a message tells what changed and why, not who asked or which run showed it.
+list="$(git rev-parse --git-dir)/info/forbidden-terms"
+body=$(grep -v '^#' "$1")
+if [ -f "$list" ]; then
+  while IFS= read -r term; do
+    case "$term" in ''|'#'*) continue ;; esac
+    if printf '%s' "$body" | grep -qiwF -- "$term"; then
+      echo "commit-msg: the message uses \"$term\" from $list" >&2
+      exit 1
+    fi
+  done < "$list"
+fi
+if printf '%s' "$body" | grep -qE '(^|[^0-9])[0-9]{2}:[0-9]{2}([^0-9]|$)'; then
+  echo "commit-msg: the message carries a clock time" >&2
+  exit 1
+fi
+exit 0

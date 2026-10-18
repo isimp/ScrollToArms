@@ -22,6 +22,11 @@ jobs:
       - name: Build
         run: dotnet build -c Release -p:LibsDir=lib --nologo
 
+      # The standards tests compile the source against lib/ and read it with the compiler, so
+      # they need no BepInEx.dll and run here.
+      - name: Standards
+        run: dotnet test tests/ScrollToArms.Standards --nologo
+
       - uses: actions/upload-artifact@v4
         with:
           name: ScrollToArms

@@ -1,0 +1,19 @@
+#!/bin/sh
+# Runs the standards tests and the unit tests before anything is pushed, and stops the push when
+# one fails. Both need nothing but the repository: the standards tests compile against lib/, and
+# the unit tests build the hotbar walk on its own.
+#
+# Git runs hooks only from a folder it is told about, once per clone:
+#   git config core.hooksPath .githooks
+
+root="$(git rev-parse --show-toplevel)"
+
+if ! dotnet test "$root/tests/ScrollToArms.Standards" --nologo --verbosity quiet; then
+    echo "pre-push: the standards tests failed, so nothing was pushed" >&2
+    exit 1
+fi
+
+if ! dotnet test "$root/tests/ScrollToArms.Tests" --nologo --verbosity quiet; then
+    echo "pre-push: the unit tests failed, so nothing was pushed" >&2
+    exit 1
+fi
