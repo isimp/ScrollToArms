@@ -124,4 +124,41 @@ public class WheelWordsTests
     {
         Assert.Equal(shown, WheelWords.Spaced(key));
     }
+
+    [Fact]
+    public void AFoundReadIsToldAsInformationWithItsCount()
+    {
+        Assert.Equal("ScrollToArms: camera zoom hands over the wheel at 2 reads.", WheelWords.PatchReport(camera: true, replaced: 2, out var level));
+        Assert.Equal(ReportLevel.Info, level);
+        Assert.Equal("ScrollToArms: piece rotation hands over the wheel at 1 read.", WheelWords.PatchReport(camera: false, replaced: 1, out level));
+        Assert.Equal(ReportLevel.Info, level);
+    }
+
+    [Fact]
+    public void ACameraThatNoLongerReadsTheWheelIsAnErrorAsScrollingStaysOff()
+    {
+        Assert.Equal("ScrollToArms: GameCamera.UpdateCamera no longer reads the mouse wheel where expected. Hotbar scrolling stays off; the camera zoom is untouched.",
+            WheelWords.PatchReport(camera: true, replaced: 0, out var level));
+        Assert.Equal(ReportLevel.Error, level);
+    }
+
+    [Fact]
+    public void APieceRotationThatNoLongerReadsTheWheelIsAWarningAsOnlyBuildModeIsLost()
+    {
+        Assert.Equal("ScrollToArms: Player.UpdatePlacement no longer reads the mouse wheel where expected. Hotbar scrolling stays off in build mode.",
+            WheelWords.PatchReport(camera: false, replaced: 0, out var level));
+        Assert.Equal(ReportLevel.Warning, level);
+    }
+
+    [Fact]
+    public void AResultIsToldOnceAndAgainOnlyWhenItChanges()
+    {
+        var reports = new PatchReports<string>();
+
+        Assert.True(reports.IsNew("camera", 2));
+        Assert.False(reports.IsNew("camera", 2));
+        Assert.True(reports.IsNew("rotation", 2));
+        Assert.True(reports.IsNew("camera", 0));
+        Assert.True(reports.IsNew("camera", 2));
+    }
 }

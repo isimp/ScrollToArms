@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 
 namespace ScrollToArms
@@ -106,6 +107,30 @@ namespace ScrollToArms
             return flipBack ? text + $" A tap on {key} goes back." : text;
         }
 
+        /// <summary>
+        /// The log's line for what the wheel patch found in the camera zoom or the piece rotation.
+        /// Reads found are information; none in the camera is an error, as hotbar scrolling stays off,
+        /// none in the rotation a warning, as only build mode loses it.
+        /// </summary>
+        public static string PatchReport(bool camera, int replaced, out ReportLevel level)
+        {
+            if (replaced > 0)
+            {
+                level = ReportLevel.Info;
+                var what = camera ? "camera zoom" : "piece rotation";
+                return $"ScrollToArms: {what} hands over the wheel at {replaced} {(replaced == 1 ? "read" : "reads")}.";
+            }
+
+            if (camera)
+            {
+                level = ReportLevel.Error;
+                return "ScrollToArms: GameCamera.UpdateCamera no longer reads the mouse wheel where expected. Hotbar scrolling stays off; the camera zoom is untouched.";
+            }
+
+            level = ReportLevel.Warning;
+            return "ScrollToArms: Player.UpdatePlacement no longer reads the mouse wheel where expected. Hotbar scrolling stays off in build mode.";
+        }
+
         /// <summary>A key code's name with spaces between its words: "LeftAlt" reads as "Left Alt".</summary>
         public static string Spaced(string raw)
         {
@@ -121,6 +146,31 @@ namespace ScrollToArms
 
         /// <summary>The game's own look for a key in a centre message.</summary>
         public static string Marked(string label) => $"[<color=yellow><b>{label}</b></color>]";
+    }
+
+    /// <summary>How loud a line in the log is.</summary>
+    internal enum ReportLevel
+    {
+        Info,
+        Warning,
+        Error,
+    }
+
+    /// <summary>
+    /// Which patch results have been told already. The transpiler runs again whenever another mod
+    /// patches the same method, and a result is told once, and again only when it changes.
+    /// </summary>
+    internal sealed class PatchReports<TKey>
+    {
+        private readonly Dictionary<TKey, int> _told = new Dictionary<TKey, int>();
+
+        /// <summary>Whether this count for this method is new, and so to be told; it counts as told from here on.</summary>
+        public bool IsNew(TKey method, int replaced)
+        {
+            if (_told.TryGetValue(method, out var last) && last == replaced) return false;
+            _told[method] = replaced;
+            return true;
+        }
     }
 
     /// <summary>

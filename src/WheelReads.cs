@@ -31,7 +31,7 @@ namespace ScrollToArms
 
         // Reads found by the latest run of the transpiler, per patched method. Absent until it ran.
         private static readonly Dictionary<MethodBase, int> Found = new Dictionary<MethodBase, int>();
-        private static readonly Dictionary<MethodBase, int> Reported = new Dictionary<MethodBase, int>();
+        private static readonly PatchReports<MethodBase> Reported = new PatchReports<MethodBase>();
 
         /// <summary>True once the camera zoom's wheel reads go through <see cref="Read"/>.</summary>
         public static bool CameraReady => ReadyFor(Camera);
@@ -99,16 +99,12 @@ namespace ScrollToArms
 
         private static void Report(MethodBase method, int replaced)
         {
-            if (Reported.TryGetValue(method, out var last) && last == replaced) return;
-            Reported[method] = replaced;
+            if (!Reported.IsNew(method, replaced)) return;
 
-            var what = method == Camera ? "camera zoom" : "piece rotation";
-            if (replaced > 0)
-                Plugin.Log.LogInfo($"ScrollToArms: {what} hands over the wheel at {replaced} {(replaced == 1 ? "read" : "reads")}.");
-            else if (method == Camera)
-                Plugin.Log.LogError("ScrollToArms: GameCamera.UpdateCamera no longer reads the mouse wheel where expected. Hotbar scrolling stays off; the camera zoom is untouched.");
-            else
-                Plugin.Log.LogWarning("ScrollToArms: Player.UpdatePlacement no longer reads the mouse wheel where expected. Hotbar scrolling stays off in build mode.");
+            var line = WheelWords.PatchReport(method == Camera, replaced, out var level);
+            if (level == ReportLevel.Error) Plugin.Log.LogError(line);
+            else if (level == ReportLevel.Warning) Plugin.Log.LogWarning(line);
+            else Plugin.Log.LogInfo(line);
         }
 
         /// <summary>The wheel as the camera and the piece rotation see it: nothing while the hotbar owns it.</summary>
