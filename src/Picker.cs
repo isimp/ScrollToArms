@@ -120,7 +120,7 @@ namespace ScrollToArms
             var player = Player.m_localPlayer;
             if (player == null || !Plugin.Enabled || ToggleEquipped == null)
             {
-                Reset();
+                EndPick();
                 return;
             }
 
@@ -141,7 +141,7 @@ namespace ScrollToArms
             if (!CanPick(player))
             {
                 _tapSpoiled = true;
-                Reset();
+                EndPick();
                 return;
             }
 
@@ -157,7 +157,7 @@ namespace ScrollToArms
             // the player has chosen another way.
             if ((Choosing || Pending != null) && HandsChanged(player))
             {
-                Reset();
+                EndPick();
                 return;
             }
 
@@ -527,7 +527,11 @@ namespace ScrollToArms
             _lastBusy = null;
         }
 
-        private static void Reset()
+        /// <summary>
+        /// Ends the pick: the cursor, a pick still on its way and any part of a notch go. What the
+        /// hands held before, for flipping back, and the flash of a lost pick stay.
+        /// </summary>
+        private static void EndPick()
         {
             Choosing = false;
             Cursor = -1;
