@@ -44,3 +44,21 @@ dotnet build -c Release -p:ValheimDir="<Valheim folder>" -p:ProfileDir="<profile
 The `VALHEIM_DIR` environment variable can be used instead of `ValheimDir`. Without these, a default Steam installation and a default Gale profile are assumed.
 
 The files in `lib/` contain metadata only: every method body is replaced and resources are removed, so they can be compiled against but not run. Regenerate them after a game update with `tools/strip-references.ps1`. Releasing is described in [releasing.md](releasing.md).
+
+## Tests
+
+The walk along the hotbar has unit tests that need no game (`src/HotbarWalk.cs`): where a notch puts the cursor, past slots with nothing to take in hand, at either end with `Wrap` on and off, from nothing in hand, on a bar with one weapon or none, and how the wheel's readings make notches in the direction `InvertDirection` sets.
+
+```
+dotnet test tests/ScrollToArms.Tests
+```
+
+The build itself runs every .NET code analysis rule and fails on any finding (`BuildChecks.props`), but for the few that misread a Unity plugin, which `Analysis.globalconfig` turns off with the reason for each. It also compiles the doc comments, so a link to something renamed fails it. `tests/ScrollToArms.Standards` holds what the compiler cannot. It compiles the source as the build does, against the stubs in `lib/`, and reads it with the compiler's own types. Text is compared and sorted ordinally, never in the PC's language, and a fraction or a time becomes text the same way on every PC. A Unity object is checked for none by Unity's own test. A failure caught is told in the log, or the catch says what the failure means. Comments carry no dates, each member has one summary of its own, every file under `src/` is compiled into the unit tests or named in `GameOnlyFiles.cs` with why it needs the game, every test-only `Reset()` forgets all its class holds, and the plugin, the project and `manifest.json` name one version. They need no `BepInEx.dll`, so the build workflow runs them on every push:
+
+```
+dotnet test tests/ScrollToArms.Standards
+```
+
+`.githooks/pre-push` runs both sets before every push and stops the push when one fails, and `.githooks/commit-msg` refuses a message that carries a clock time. Git uses them once told to, per clone: `git config core.hooksPath .githooks`.
+
+`selftest/` is an in-game self-test, a plugin of its own that reaches into ScrollToArms through `InternalsVisibleTo`; build it with `dotnet build selftest` and type `scrolltoarms selftest` in the console, or with a slash in chat. It checks that the camera zoom and the piece rotation hand the wheel over, that the game's equip call, the Hide key's memory and the hotbar's markers were found, and walks your own hotbar through the picker's walk: every slot it stops on holds a weapon, a bow, a shield, a tool or a torch, scrolling left stops on the same slots as scrolling right, and the end of the bar wraps or stays as `Wrap` says. It only reads, and writes `[selftest]` lines to `LogOutput.log`. It is never packaged; a release takes `ScrollToArms.dll` alone.
