@@ -1008,4 +1008,20 @@ public class PickFlowTests
         Assert.Equal(1, play.World.Count("equip torch"));
         Assert.Equal(0, play.World.Count("equip sword"));
     }
+
+    [Fact]
+    public void ATapBackToAnItemNoLongerOnTheBarDoesNothingEvenWithAnotherInItsSlot()
+    {
+        var play = Bar();
+        play.World.Right = "sword";
+        play.Frame();
+        play.World.Right = "axe";
+        play.Frame();
+        play.World.Bar[0] = "hammer";
+
+        play.Tap();
+
+        Assert.Empty(play.World.Calls);
+        Assert.Equal("axe", play.World.Right);
+    }
 }
