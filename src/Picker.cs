@@ -14,7 +14,7 @@ namespace ScrollToArms
     /// the game's own rules: an item with an equip time is queued with its progress bar, and the
     /// hand rules decide what the new item replaces.
     /// </summary>
-    public static class Picker
+    internal static class Picker
     {
         public const int Slots = 8;
 

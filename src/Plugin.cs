@@ -32,7 +32,7 @@ namespace ScrollToArms
         public const string Guid = "isimp.ScrollToArms";
         public const string Version = "0.2.3";
 
-        public static ManualLogSource Log;
+        internal static ManualLogSource Log;
 
         // Set when the camera patch cannot be requested at all. Without it the wheel would zoom
         // and scroll the hotbar at the same time, so the mod stays out of the way instead. A patch
@@ -82,7 +82,7 @@ namespace ScrollToArms
         public static Commit EffectiveCommit =>
             PlainScroll == PlainScroll.Hotbar ? Commit.AfterPause : CommitSetting;
 
-        private Harmony _harmony;
+        private static Harmony _harmony;
 
         private void Awake()
         {

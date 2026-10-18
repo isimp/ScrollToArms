@@ -1,0 +1,27 @@
+<Project>
+
+  <!-- What the build itself checks, for what a release ships and the self-test alike; the
+       standards tests in tests/ScrollToArms.Standards check what the compiler cannot.
+
+       Doc comments are compiled: a link to something renamed or gone, a link that could mean
+       several overloads, badly formed XML, or parameter tags that miss or name no parameter
+       fail the build. A member with no comment is fine. The XML file stays in bin; a release
+       takes the DLLs alone.
+
+       Every .NET code analysis rule runs, and any finding fails the build, but those
+       Analysis.globalconfig turns off, each with its reason. -->
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <WarningsAsErrors>$(WarningsAsErrors);CS0419;CS1570;CS1572;CS1573;CS1574;CS1580;CS1581;CS1584;CS1734</WarningsAsErrors>
+
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-all</AnalysisLevel>
+    <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)Analysis.globalconfig" />
+  </ItemGroup>
+
+</Project>
