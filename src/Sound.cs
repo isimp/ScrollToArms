@@ -73,6 +73,9 @@ namespace ScrollToArms
             if (Cues.TryGetValue(cue, out var prefab) && prefab != null) Play(prefab);
         }
 
+        /// <summary>Whether a cue's sound was found in the game, once the world was entered with PlaySounds on.</summary>
+        internal static bool Found(Cue cue) => Cues.TryGetValue(cue, out var prefab) && prefab != null;
+
         /// <summary>Silences every cue for good. Called on the way out.</summary>
         public static void Mute()
         {

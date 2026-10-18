@@ -47,6 +47,15 @@ namespace ScrollToArms.SelfTest
             Check(Picker.EquipFound, "the game's equip call was found");
             Check(Stow.Available, "what the Hide key put away can be read and brought back");
             Check(HotbarView.Available, "the hotbar's markers for the pick were found");
+            if (Plugin.PlaySounds)
+            {
+                Check(Sound.Found(Sound.Cue.Tick), "the tick's sound was found in the game");
+                Check(Sound.Found(Sound.Cue.Lost), "the lost pick's sound was found in the game");
+            }
+            else
+            {
+                Skip("PlaySounds is off, so the sounds were not looked for");
+            }
 
             Write("START the walk along your hotbar");
             var stops = Walk();
