@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The standards tests: ScrollToArms's source and the self-test's, compiled here as the build
+       compiles them, against the metadata-only copies in lib/ and the .NET Framework 4.7.2
+       reference assemblies, and read with the compiler's own types (the compiler version the SDK
+       builds with). They hold what the compiler cannot: how text is compared, how a failure is
+       told, what a comment may say, which code may write a file.
+       They need no BepInEx.dll and no game, so the build server runs them too.
+       Run with: dotnet test tests/ScrollToArms.Standards -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>ScrollToArms.Standards</RootNamespace>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3" GeneratePathProperty="true" ExcludeAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>Net472References</_Parameter1>
+      <_Parameter2>$(PkgMicrosoft_NETFramework_ReferenceAssemblies_net472)/build/.NETFramework/v4.7.2</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+</Project>
