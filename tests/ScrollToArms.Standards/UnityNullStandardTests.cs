@@ -7,7 +7,7 @@ namespace ScrollToArms.Standards
 {
     /// <summary>
     /// A Unity object is held to be none by Unity's own check, which <c>?.</c>, <c>??</c> and
-    /// <c>??=</c> skip: a hotbar destroyed with the scene, the player gone, a component not there
+    /// <c>??=</c> skip: a panel destroyed with the scene, the player gone, a component not there
     /// would pass them and fail on use. So none of them is used on a Unity object unless it went
     /// through <c>OrNull()</c> first, which makes Unity's none a real null.
     /// </summary>

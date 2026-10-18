@@ -1,7 +1,10 @@
 #!/bin/sh
-# Runs the standards tests and the unit tests before anything is pushed, and stops the push when
-# one fails. Both need nothing but the repository: the standards tests compile against lib/, and
-# the unit tests build the hotbar walk on its own.
+# Runs the standards tests, the shared-file check and the unit tests before anything is pushed,
+# and stops the push when one fails. The tests need nothing but the repository: the standards
+# tests compile against lib/, and the unit tests build what ScrollToArms decides on their own,
+# against the same metadata-only stubs.
+# The shared-file check compares the files listed in tools/shared-files.txt with Bindrune's
+# copies beside this repository; without a Bindrune checkout it says so and compares nothing.
 #
 # Git runs hooks only from a folder it is told about, once per clone:
 #   git config core.hooksPath .githooks
@@ -10,6 +13,11 @@ root="$(git rev-parse --show-toplevel)"
 
 if ! dotnet test "$root/tests/ScrollToArms.Standards" --nologo --verbosity quiet; then
     echo "pre-push: the standards tests failed, so nothing was pushed" >&2
+    exit 1
+fi
+
+if ! sh "$root/tools/check-shared.sh"; then
+    echo "pre-push: a file shared with Bindrune differs from its copy, so nothing was pushed" >&2
     exit 1
 fi
 

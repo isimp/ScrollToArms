@@ -1,0 +1,23 @@
+# Files ScrollToArms shares with Bindrune, the same in both but for the mod's name.
+# tools/check-shared.sh compares each with Bindrune's copy, and the pre-push hook runs it.
+# A file that differs by design is not listed: the failure standard, which names this mod's own way
+# of telling a failure; the pre-push hook, as these unit tests need no BepInEx.dll; the publish
+# script's store categories.
+# Columns are separated by a tab.
+names	ScrollToArms	Bindrune
+tests/ScrollToArms.Standards/CommentStandardTests.cs	tests/Bindrune.Standards/CommentStandardTests.cs
+tests/ScrollToArms.Standards/FileAndDocStandardTests.cs	tests/Bindrune.Standards/FileAndDocStandardTests.cs
+tests/ScrollToArms.Standards/LanguageTextStandardTests.cs	tests/Bindrune.Standards/LanguageTextStandardTests.cs
+tests/ScrollToArms.Standards/StringStandardTests.cs	tests/Bindrune.Standards/StringStandardTests.cs
+tests/ScrollToArms.Standards/UnitTestReachStandardTests.cs	tests/Bindrune.Standards/UnitTestReachStandardTests.cs
+tests/ScrollToArms.Standards/UnityNullStandardTests.cs	tests/Bindrune.Standards/UnityNullStandardTests.cs
+tests/ScrollToArms.Standards/VersionStandardTests.cs	tests/Bindrune.Standards/VersionStandardTests.cs
+tests/ScrollToArms.Standards/Violations.cs	tests/Bindrune.Standards/Violations.cs
+tests/ScrollToArms.Standards/ResetStandardTests.cs	tests/Bindrune.Standards/ResetStandardTests.cs
+tests/ScrollToArms.Standards/SourceCompilesTests.cs	tests/Bindrune.Standards/SourceCompilesTests.cs
+src/UnityNull.cs	src/UnityNull.cs
+BuildChecks.props	BuildChecks.props
+global.json	global.json
+.gitattributes	.gitattributes
+.githooks/commit-msg	.githooks/commit-msg
+tools/check-shared.sh	tools/check-shared.sh

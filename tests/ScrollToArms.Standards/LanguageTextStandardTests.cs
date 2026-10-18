@@ -8,7 +8,7 @@ namespace ScrollToArms.Standards
     /// <summary>
     /// A number with a fraction, a point in time or a span of time becomes text one way whatever
     /// the PC's language: with the invariant culture named. Left to the PC, 0.5 is written 0,5 on
-    /// a German one, which a file read back elsewhere misreads and a message shows unlike the
+    /// a German one, which a file read back elsewhere misreads and the panel shows unlike the
     /// game's own numbers. The analysis already holds <c>ToString</c> and <c>string.Format</c> to
     /// it; this holds what it cannot see, a value put into an interpolated string or added to
     /// text, unless the whole string is made with <c>FormattableString.Invariant</c>.
