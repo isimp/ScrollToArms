@@ -6,20 +6,6 @@ using UnityEngine;
 
 namespace ScrollToArms
 {
-    /// <summary>What the mouse wheel does when the modifier is not held.</summary>
-    public enum PlainScroll
-    {
-        Zoom,
-        Hotbar
-    }
-
-    /// <summary>When a slot picked with the wheel is put in the player's hand.</summary>
-    public enum Commit
-    {
-        OnRelease,
-        AfterPause
-    }
-
     /// <summary>
     /// Scroll the hotbar with the mouse wheel. A Harmony transpiler takes the wheel away from the
     /// camera zoom and the piece rotation while the hotbar owns it; the rest is the picker, driven

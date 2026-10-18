@@ -37,13 +37,11 @@ namespace ScrollToArms
         // Long enough for any interface sound to finish.
         private const float Lifetime = 5f;
 
-        // Scrolling fast would otherwise stack ticks into a buzz.
-        private const float MinTickGap = 0.04f;
+        private static readonly TickGate Ticks = new TickGate();
 
         private static readonly Dictionary<Cue, GameObject> Cues = new Dictionary<Cue, GameObject>();
         private static bool _prepared;
         private static bool _muted;
-        private static float _lastTick = -1f;
         private static GameObject _holder;
 
         /// <summary>
@@ -70,12 +68,7 @@ namespace ScrollToArms
         {
             if (_muted || !_prepared || !Plugin.PlaySounds) return;
 
-            if (cue == Cue.Tick)
-            {
-                var now = Time.unscaledTime;
-                if (now - _lastTick < MinTickGap) return;
-                _lastTick = now;
-            }
+            if (cue == Cue.Tick && !Ticks.Allow(Time.unscaledTime)) return;
 
             if (Cues.TryGetValue(cue, out var prefab) && prefab != null) Play(prefab);
         }

@@ -62,14 +62,14 @@ namespace ScrollToArms
 
             if (!(ElementsField.GetValue(bar) is IList elements)) return;
 
-            var frame = Picker.Choosing ? Picker.Cursor : Picker.PendingSlot;
+            var frame = PickLook.Frame(Picker.Choosing, Picker.Cursor, Picker.PendingSlot);
             var waiting = Picker.PendingSlot;
 
             // A lost pick flashes red on its slot and fades out, unless the frame is back on it.
             var flashAge = Time.time - Picker.LostAt;
-            var flash = Picker.LostSlot >= 0 && flashAge < FlashTime && Picker.LostSlot != frame ? Picker.LostSlot : -1;
+            var flash = PickLook.Flash(Picker.LostSlot, flashAge, frame);
 
-            if (frame < 0 && waiting < 0 && flash < 0)
+            if (!PickLook.Shows(frame, waiting, flash))
             {
                 if (_drawn) Restore(bar, player);
                 _drawn = false;
@@ -89,23 +89,22 @@ namespace ScrollToArms
 
                 // A pick held back while the game would refuse it pulses, so a wait reads as a wait
                 // rather than as a pick that went nowhere.
-                if (i == frame) Pulse(selection, !Picker.Choosing && Picker.Waiting);
-                if (i == flash) Flash(selection, flashAge / FlashTime);
+                if (i == frame) Pulse(selection, PickLook.Pulses(Picker.Choosing, Picker.Waiting));
+                if (i == flash) Flash(selection, flashAge);
 
                 var item = Picker.ItemAt(player, i);
-                var queued = i == waiting || (item != null && player.IsEquipActionQueued(item));
+                var queued = PickLook.Queued(i, waiting, item != null && player.IsEquipActionQueued(item));
                 SetActive(QueuedField.GetValue(element) as GameObject, queued);
             }
 
-            DrawLabel(bar, player, elements, frame, flash, flashAge / FlashTime);
+            DrawLabel(bar, player, elements, frame, flash, flashAge);
             _drawn = true;
         }
 
-        // The name sits this far above the bar, in the bar's own units, at this size relative to
-        // the slot number it is copied from, and this faint, so it informs without drawing the eye.
+        // The name sits this far above the bar, in the bar's own units, and at this size relative
+        // to the slot number it is copied from; how faint it is, PickLook says.
         private const float NameGap = 6f;
         private const float NameScale = 0.95f;
-        private const float NameAlpha = 0.55f;
 
         private static TMP_Text _name;
 
@@ -115,21 +114,16 @@ namespace ScrollToArms
         /// frame, and a lost pick's name fades out in red with its frame. Otherwise it says what the
         /// wheel does, when that is worth saying.
         /// </summary>
-        private static void DrawLabel(HotkeyBar bar, Player player, IList elements, int frame, int flash, float flashProgress)
+        private static void DrawLabel(HotkeyBar bar, Player player, IList elements, int frame, int flash, float flashAge)
         {
-            var slot = frame >= 0 ? frame : flash;
+            var slot = PickLook.NamedSlot(frame, flash);
             var item = slot >= 0 ? Picker.ItemAt(player, slot) : null;
 
             string text = null;
-            var colour = Color.white;
+            var lost = PickLook.LostName(item != null, frame);
             if (item != null)
             {
                 if (Plugin.ShowItemName) text = ItemNameList.ShownName(item.m_shared.m_name);
-                if (frame < 0)
-                {
-                    colour = FlashColor;
-                    colour.a = 1f - Mathf.Clamp01(flashProgress);
-                }
             }
             else
             {
@@ -148,7 +142,8 @@ namespace ScrollToArms
 
             label.text = text;
 
-            colour.a *= NameAlpha;
+            var colour = lost ? FlashColor : Color.white;
+            colour.a = PickLook.NameAlpha(lost, PickLook.Fade(flashAge));
             label.color = colour;
 
             // Above the top left corner of the first slot, whatever its pivot and anchors are.
@@ -196,16 +191,13 @@ namespace ScrollToArms
             if (_name != null && _name.gameObject.activeSelf) _name.gameObject.SetActive(false);
         }
 
-        // How long a lost pick's red frame takes to fade out.
-        private const float FlashTime = 0.5f;
-
         private static readonly Color FlashColor = new Color(1f, 0.25f, 0.2f, 1f);
 
         private static GameObject _flashed;
         private static Graphic[] _flashedGraphics;
         private static Color[] _flashedColors;
 
-        private static void Flash(GameObject selection, float progress)
+        private static void Flash(GameObject selection, float age)
         {
             if (selection == null) return;
 
@@ -230,7 +222,7 @@ namespace ScrollToArms
             // its opacity from here on.
             if (_pulsed == group) _pulsed = null;
 
-            group.alpha = 1f - Mathf.Clamp01(progress);
+            group.alpha = PickLook.Fade(age);
         }
 
         private static void StopFlash()
@@ -250,11 +242,6 @@ namespace ScrollToArms
             _flashedColors = null;
         }
 
-        // Twice per second, between PulseLow and full opacity, starting dim the moment the wait
-        // begins, so a wait of half a second still shows one clear dip.
-        private const float PulseLow = 0.15f;
-        private const float PulseRate = 2f * 2f * Mathf.PI;
-
         private static CanvasGroup _pulsed;
 
         private static void Pulse(GameObject selection, bool on)
@@ -271,8 +258,7 @@ namespace ScrollToArms
             if (_pulsed != group) StopPulse();
             _pulsed = group;
 
-            var wave = 0.5f - 0.5f * Mathf.Cos((Time.time - Picker.WaitingSince) * PulseRate);
-            group.alpha = Mathf.Lerp(PulseLow, 1f, wave);
+            group.alpha = PickLook.PulseAlpha(Time.time - Picker.WaitingSince);
         }
 
         // An explicit Unity null check: the ?? operator does not see a destroyed component as null.

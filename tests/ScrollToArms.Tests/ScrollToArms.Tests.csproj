@@ -1,7 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Tests for the walk along the hotbar: where a notch of the wheel puts the cursor. src/HotbarWalk.cs
-       has no Unity, BepInEx or game reference, so it builds here on its own.
+  <!-- Tests for the parts of ScrollToArms that need no game: the walk along the hotbar, what the
+       wheel line and the messages say, and how the bar marks a pick. They compile
+       against the metadata-only game assemblies in lib/, whose methods all throw: at run time they
+       touch only the game's enums from those. The files that need the running game are left out,
+       each named with why in tests/ScrollToArms.Standards/GameOnlyFiles.cs. They need no BepInEx.dll.
        Run with: dotnet test tests/ScrollToArms.Tests
        Not referenced by ScrollToArms.csproj, so the plugin build never builds it. -->
   <PropertyGroup>
@@ -15,12 +18,24 @@
 
   <ItemGroup>
     <Compile Include="../../src/HotbarWalk.cs" />
+    <Compile Include="../../src/Modes.cs" />
+    <Compile Include="../../src/WheelWords.cs" />
+    <Compile Include="../../src/PickLook.cs" />
+    <Compile Include="../../src/ItemNameList.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="assembly_valheim"><HintPath>$(MSBuildThisFileDirectory)../../lib/assembly_valheim.dll</HintPath></Reference>
+    <Reference Include="assembly_guiutils"><HintPath>$(MSBuildThisFileDirectory)../../lib/assembly_guiutils.dll</HintPath></Reference>
+    <Reference Include="assembly_utils"><HintPath>$(MSBuildThisFileDirectory)../../lib/assembly_utils.dll</HintPath></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(MSBuildThisFileDirectory)../../lib/UnityEngine.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(MSBuildThisFileDirectory)../../lib/UnityEngine.CoreModule.dll</HintPath></Reference>
   </ItemGroup>
 
 </Project>

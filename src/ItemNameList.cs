@@ -27,17 +27,30 @@ namespace ScrollToArms
         {
             if (item?.m_shared == null) return false;
 
+            // The prefab's name is asked of Unity only when there is a list to look it up in.
             Refresh();
             if (_names.Count == 0) return false;
 
             var prefab = item.m_dropPrefab;
-            if (prefab != null && _names.Contains(prefab.name)) return true;
+            return Contains(prefab != null ? prefab.name : null, item.m_shared.m_name, ShownName);
+        }
 
-            var token = item.m_shared.m_name;
+        /// <summary>
+        /// Whether the list names an item with this prefab name and name token, whose shown name
+        /// <paramref name="shown"/> gives; either name may be missing. The shown name is asked for
+        /// last, as it is the one that costs a lookup.
+        /// </summary>
+        internal bool Contains(string prefab, string token, Func<string, string> shown)
+        {
+            Refresh();
+            if (_names.Count == 0) return false;
+
+            if (prefab != null && _names.Contains(prefab)) return true;
+
             if (string.IsNullOrEmpty(token)) return false;
             if (_names.Contains(token)) return true;
 
-            return _names.Contains(ShownName(token));
+            return _names.Contains(shown(token));
         }
 
         /// <summary>The name the game shows for an item, in the current language.</summary>
