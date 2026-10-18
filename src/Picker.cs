@@ -76,6 +76,9 @@ namespace ScrollToArms
 
         private static readonly Func<Player, ItemDrop.ItemData, bool> ToggleEquipped = ResolveToggleEquipped();
 
+        /// <summary>False when the game's equip call was not found, which leaves the picker off.</summary>
+        internal static bool EquipFound => ToggleEquipped != null;
+
         private static Func<Player, ItemDrop.ItemData, bool> ResolveToggleEquipped()
         {
             try
@@ -467,7 +470,7 @@ namespace ScrollToArms
         }
 
         /// <summary>The next slot on the player's hotbar to stop on (see <see cref="HotbarWalk.NextStop"/>).</summary>
-        private static int NextStop(Player player, int from, int step) =>
+        internal static int NextStop(Player player, int from, int step) =>
             HotbarWalk.NextStop(Width(player), from, step, Plugin.Wrap, slot => IsStop(ItemAt(player, slot)));
 
         private static int SlotOf(Player player, ItemDrop.ItemData item)

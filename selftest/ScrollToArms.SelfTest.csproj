@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The in-game self-test, a plugin of its own beside ScrollToArms that reaches into it through
+       InternalsVisibleTo. Built and deployed with a development build:
+                 dotnet build selftest
+       It is never packaged with a release, which takes ScrollToArms.dll alone. -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>ScrollToArms.SelfTest</AssemblyName>
+    <RootNamespace>ScrollToArms.SelfTest</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <DebugType>portable</DebugType>
+    <NoWarn>$(NoWarn);CS0649</NoWarn>
+  </PropertyGroup>
+
+  <Import Project="../BuildChecks.props" />
+  <Import Project="../GameReferences.props" />
+
+  <ItemGroup>
+    <ProjectReference Include="../ScrollToArms.csproj" Private="false" />
+  </ItemGroup>
+
+  <Target Name="DeployToProfile" AfterTargets="Build"
+          Condition="'$(LibsDir)' == '' And Exists('$(BepInExDir)\plugins')">
+    <MakeDir Directories="$(DeployDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(DeployDir)" ContinueOnError="true" />
+    <Message Importance="high" Text="ScrollToArms.SelfTest -> $(DeployDir)" />
+  </Target>
+
+</Project>

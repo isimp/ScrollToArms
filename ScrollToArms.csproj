@@ -21,10 +21,12 @@
   <Import Project="GameReferences.props" />
 
   <!-- The tests are projects of their own (see tests/), and the in-game self-test a plugin of its
-       own (see selftest/). A release takes ScrollToArms.dll alone. -->
+       own (see selftest/), which reaches ScrollToArms' insides as granted here. A release takes
+       ScrollToArms.dll alone. -->
   <ItemGroup>
     <Compile Remove="tests/**" />
     <Compile Remove="selftest/**" />
+    <InternalsVisibleTo Include="ScrollToArms.SelfTest" />
   </ItemGroup>
 
   <Target Name="DeployToProfile" AfterTargets="Build"

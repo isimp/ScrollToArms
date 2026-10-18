@@ -22,6 +22,10 @@ jobs:
       - name: Build
         run: dotnet build -c Release -p:LibsDir=lib --nologo
 
+      # The in-game self-test is a plugin of its own, never packaged; built here so it keeps up with ScrollToArms.
+      - name: Build the self-test
+        run: dotnet build selftest -c Release -p:LibsDir=lib --nologo
+
       # The standards tests compile the source against lib/ and read it with the compiler, so
       # they need no BepInEx.dll and run here.
       - name: Standards

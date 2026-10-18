@@ -32,7 +32,8 @@ namespace ScrollToArms
         private static readonly FieldInfo QueuedField = ElementType == null ? null : AccessTools.Field(ElementType, "m_queued");
         private static readonly FieldInfo GoField = ElementType == null ? null : AccessTools.Field(ElementType, "m_go");
 
-        private static readonly bool Available = CheckAvailable();
+        /// <summary>False when a game update moved the bar's markers; the pick is then not shown.</summary>
+        internal static readonly bool Available = CheckAvailable();
 
         private static Hud _hud;
         private static HotkeyBar _bar;
